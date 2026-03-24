@@ -44,3 +44,8 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/
+
+
+SKILL.md
+LUMIO_PROJECT_CONTEXT.md
+.gitignore
