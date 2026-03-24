@@ -1,5 +1,11 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import StudentLayout from './pages/student/StudentLayout'
+import TeacherLayout from './pages/teacher/TeacherLayout'
+import ParentLayout from './pages/parent/ParentLayout'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
@@ -7,37 +13,37 @@ function App() {
       <Router>
         <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-50">
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route
+              path="/student/*"
+              element={
+                <ProtectedRoute role="student">
+                  <StudentLayout />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/teacher/*"
+              element={
+                <ProtectedRoute role="teacher">
+                  <TeacherLayout />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parent/*"
+              element={
+                <ProtectedRoute role="parent">
+                  <ParentLayout />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/" element={<Navigate to="/login" replace />} />
           </Routes>
         </div>
       </Router>
     </AuthProvider>
-  )
-}
-
-function Home() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4">
-      <div className="text-center">
-        <h1 className="text-5xl font-bold text-primary-900 mb-4">
-          Lumio
-        </h1>
-        <p className="text-xl text-gray-600 mb-8">
-          ADHD Learning Support Platform
-        </p>
-        <p className="text-lg text-gray-500 mb-12">
-          Empowering students with tools for focus and success
-        </p>
-        <div className="flex gap-4 justify-center">
-          <button className="btn-primary">
-            Get Started
-          </button>
-          <button className="btn-secondary">
-            Learn More
-          </button>
-        </div>
-      </div>
-    </div>
   )
 }
 

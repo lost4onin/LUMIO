@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import { useAuth } from '../hooks/useAuth'
 
 interface LoginFormData {
   email: string
@@ -8,25 +8,15 @@ interface LoginFormData {
   role: 'student' | 'teacher' | 'parent'
 }
 
-interface LoginResponse {
-  token: string
-  user: {
-    id: string
-    email: string
-    role: 'student' | 'teacher' | 'parent'
-    name: string
-  }
-}
-
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
+  const { login, isLoading } = useAuth()
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
     role: 'student'
   })
   const [error, setError] = useState<string>('')
-  const [loading, setLoading] = useState<boolean>(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -41,13 +31,11 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
 
     try {
       // Validate form fields
       if (!formData.email || !formData.password) {
         setError('Please fill in all fields')
-        setLoading(false)
         return
       }
 
@@ -55,25 +43,11 @@ const LoginPage: React.FC = () => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email)) {
         setError('Please enter a valid email address')
-        setLoading(false)
         return
       }
 
-      // Make login request with credentials support for cookies
-      await axios.post<LoginResponse>(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/auth/login`,
-        {
-          email: formData.email,
-          password: formData.password,
-          role: formData.role
-        },
-        {
-          withCredentials: true, // Enable sending and storing cookies
-          timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '30000')
-        }
-      )
+      await login(formData.email, formData.password, formData.role)
 
-      // Token is stored in httpOnly cookie by the backend
       // Redirect based on role
       const roleRoute: Record<string, string> = {
         student: '/student',
@@ -83,21 +57,11 @@ const LoginPage: React.FC = () => {
 
       navigate(roleRoute[formData.role])
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        if (err.response?.status === 401) {
-          setError('Invalid email or password')
-        } else if (err.response?.status === 400) {
-          setError(err.response.data?.message || 'Invalid credentials')
-        } else if (err.code === 'ECONNREFUSED') {
-          setError('Cannot connect to server. Please try again later.')
-        } else {
-          setError(err.response?.data?.message || 'Login failed. Please try again.')
-        }
+      if (err instanceof Error) {
+        setError(err.message || 'Login failed. Please try again.')
       } else {
         setError('An unexpected error occurred. Please try again.')
       }
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -135,7 +99,7 @@ const LoginPage: React.FC = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                disabled={loading}
+                disabled={isLoading}
                 placeholder="you@example.com"
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
               />
@@ -152,7 +116,7 @@ const LoginPage: React.FC = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                disabled={loading}
+                disabled={isLoading}
                 placeholder="••••••••"
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
               />
@@ -168,7 +132,7 @@ const LoginPage: React.FC = () => {
                 name="role"
                 value={formData.role}
                 onChange={handleInputChange}
-                disabled={loading}
+                disabled={isLoading}
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed appearance-none cursor-pointer"
               >
                 <option value="student">Student</option>
@@ -180,10 +144,10 @@ const LoginPage: React.FC = () => {
             {/* Sign In Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-700 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105 disabled:scale-100 mt-6"
             >
-              {loading ? (
+              {isLoading ? (
                 <span className="flex items-center justify-center">
                   <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
