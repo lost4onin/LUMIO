@@ -37,7 +37,7 @@ export const useInterval = (
         intervalRef.current = null
       }
     }
-  }, [delay, ...dependencies])
+  }, [delay, ...dependencies]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 export default useInterval

@@ -23,6 +23,9 @@ export const SessionPage: React.FC = () => {
   // Focus tracking state
   const [currentFocusScore, setCurrentFocusScore] = useState(0.5)
   const [currentCause, setCurrentCause] = useState<string>('')
+  const [apiError, setApiError] = useState<string>('')
+  const [webcamError, setWebcamError] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(false)
 
   // Webcam state
   const [webcamActive, setWebcamActive] = useState(false)
@@ -90,9 +93,17 @@ export const SessionPage: React.FC = () => {
   // Start session
   const handleStartSession = async () => {
     if (!studentId) {
-      console.error('Student ID not available')
+      setApiError('Student ID not available')
       return
     }
+
+    if (isLoading) {
+      setApiError('Request already in progress, please wait...')
+      return
+    }
+
+    setIsLoading(true)
+    setApiError('')
 
     try {
       const response = await apiClient.post<{ session_id: string }>(
@@ -110,22 +121,38 @@ export const SessionPage: React.FC = () => {
         setCurrentFocusScore(0.5)
         setCurrentCause('')
         focusPayloadRef.current = null
+        setWebcamError('')
 
         // Start webcam
         await startWebcam()
         console.log(`Session started: ${response.data.session_id}`)
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to start session'
+      setApiError(errorMsg)
       console.error('Failed to start session:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
   // End session
   const handleStopSession = async () => {
     if (!sessionId) {
-      console.error('Session ID not available')
+      setApiError('No active session to stop')
       return
     }
+
+    if (isLoading) {
+      setApiError('Request already in progress, please wait...')
+      return
+    }
+
+    setIsLoading(true)
+    setApiError('')
+
+    // Immediately stop webcam to indicate action
+    stopWebcam()
 
     try {
       await apiClient.post('/sessions/end', {
@@ -137,12 +164,17 @@ export const SessionPage: React.FC = () => {
       setElapsedSeconds(0)
       setCurrentCause('')
       focusPayloadRef.current = null
-
-      // Stop webcam
-      stopWebcam()
       console.log('Session ended')
     } catch (error) {
+      // Restart webcam if end session fails
+      if (sessionId) {
+        await startWebcam()
+      }
+      const errorMsg = error instanceof Error ? error.message : 'Failed to end session'
+      setApiError(errorMsg)
       console.error('Failed to end session:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -162,9 +194,13 @@ export const SessionPage: React.FC = () => {
         videoRef.current.srcObject = stream
         streamRef.current = stream
         setWebcamActive(true)
+        setWebcamError('')
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to access webcam'
+      setWebcamError(errorMsg)
       console.error('Failed to access webcam:', error)
+      // Still allow session to continue without webcam
     }
   }
 
@@ -236,23 +272,37 @@ export const SessionPage: React.FC = () => {
         </div>
 
         {/* Start/Stop button */}
-        <div className="mb-12">
+        <div className="mb-8">
           {!sessionActive ? (
             <button
               onClick={handleStartSession}
-              className="w-full px-6 py-4 rounded-lg bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-bold text-lg transition transform hover:scale-105 active:scale-95 shadow-lg"
+              disabled={isLoading}
+              className="w-full px-6 py-4 rounded-lg bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-bold text-lg transition transform hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              Start Session
+              {isLoading ? 'Starting...' : 'Start Session'}
             </button>
           ) : (
             <button
               onClick={handleStopSession}
-              className="w-full px-6 py-4 rounded-lg bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold text-lg transition transform hover:scale-105 active:scale-95 shadow-lg"
+              disabled={isLoading}
+              className="w-full px-6 py-4 rounded-lg bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold text-lg transition transform hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              Stop Session
+              {isLoading ? 'Stopping...' : 'Stop Session'}
             </button>
           )}
         </div>
+
+        {/* Error messages */}
+        {apiError && (
+          <div className="mb-8 p-4 rounded-lg bg-red-900/30 border border-red-600 text-red-300 text-sm">
+            {apiError}
+          </div>
+        )}
+        {webcamError && (
+          <div className="mb-8 p-4 rounded-lg bg-yellow-900/30 border border-yellow-600 text-yellow-300 text-sm">
+            Webcam warning: {webcamError} (session will continue without webcam preview)
+          </div>
+        )}
 
         {/* Status text */}
         <div className="mb-8 h-6">
@@ -276,9 +326,9 @@ export const SessionPage: React.FC = () => {
               causeLabel={currentCause || undefined}
               className="mt-4"
             />
-            {confidence > 0 && (
+            {currentCause && confidence > 0 && (
               <p className="text-xs text-slate-400 mt-2">
-                Confidence: {Math.round(confidence * 100)}%
+                {currentCause} — Confidence: {Math.round(confidence * 100)}%
               </p>
             )}
           </div>

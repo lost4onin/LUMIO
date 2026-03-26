@@ -1,21 +1,22 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { apiClient } from '../lib/api'
 
 export interface FocusEvent {
-  focus_score: number;
-  timestamp: number;
-  blink_rate?: number;
-  head_pose_x?: number;
-  head_pose_y?: number;
-  gaze_score?: number;
+  focus_score: number
+  timestamp: number
+  blink_rate?: number
+  head_pose_x?: number
+  head_pose_y?: number
+  gaze_score?: number
 }
 
 export interface CauseLabelResult {
-  cause: string | null;
-  confidence: number;
+  cause: string | null
+  confidence: number
 }
 
-const BUFFER_SIZE = 10;
-const POLL_INTERVAL_MS = 10000; // 10 seconds
+const BUFFER_SIZE = 10
+const POLL_INTERVAL_MS = 10000 // 10 seconds
 
 /**
  * Hook that buffers focus events and periodically classifies the distraction cause.
@@ -29,64 +30,59 @@ const POLL_INTERVAL_MS = 10000; // 10 seconds
  *     pushFocusEvent(event);
  *   }, [focusScore]);
  */
-export const useCauseLabel = (apiBaseUrl: string = '/api') => {
-  const bufferRef = useRef<FocusEvent[]>([]);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+export const useCauseLabel = () => {
+  const bufferRef = useRef<FocusEvent[]>([])
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const [result, setResult] = useState<CauseLabelResult>({
     cause: null,
-    confidence: 0,
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    confidence: 0
+  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   /**
    * Add a focus event to the buffer.
    * Maintains a rolling window of BUFFER_SIZE events.
    */
   const pushFocusEvent = useCallback((event: FocusEvent) => {
-    bufferRef.current.push(event);
+    bufferRef.current.push(event)
     if (bufferRef.current.length > BUFFER_SIZE) {
-      bufferRef.current.shift();
+      bufferRef.current.shift()
     }
-  }, []);
+  }, [])
 
   /**
    * Classify the current buffer of events.
+   * Uses apiClient which handles base URL and credentials.
    */
   const classifyBuffer = useCallback(async () => {
     if (bufferRef.current.length === 0) {
-      return;
+      return
     }
 
-    setIsLoading(true);
-    setError(null);
+    setIsLoading(true)
+    setError(null)
 
     try {
-      const response = await fetch(`${apiBaseUrl}/analytics/classify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(bufferRef.current),
-      });
+      const response = await apiClient.post<CauseLabelResult>(
+        '/analytics/classify',
+        bufferRef.current
+      )
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      if (response.data) {
+        setResult({
+          cause: response.data.cause || null,
+          confidence: response.data.confidence || 0
+        })
       }
-
-      const data = await response.json();
-      setResult({
-        cause: data.cause || null,
-        confidence: data.confidence || 0,
-      });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(errorMessage);
-      console.error('useCauseLabel classification error:', errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      setError(errorMessage)
+      console.error('useCauseLabel classification error:', errorMessage)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  }, [apiBaseUrl]);
+  }, [])
 
   /**
    * Start polling for classification every 10 seconds.
@@ -94,15 +90,15 @@ export const useCauseLabel = (apiBaseUrl: string = '/api') => {
    */
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      classifyBuffer();
-    }, POLL_INTERVAL_MS);
+      classifyBuffer()
+    }, POLL_INTERVAL_MS)
 
     return () => {
       if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+        clearInterval(intervalRef.current)
       }
-    };
-  }, [classifyBuffer]);
+    }
+  }, [classifyBuffer])
 
   return {
     cause: result.cause,
@@ -110,8 +106,8 @@ export const useCauseLabel = (apiBaseUrl: string = '/api') => {
     isLoading,
     error,
     pushFocusEvent,
-    classifyBuffer,
-  };
-};
+    classifyBuffer
+  }
+}
 
-export default useCauseLabel;
+export default useCauseLabel
