@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useCauseLabel, FocusEvent } from '../../hooks/useCauseLabel'
+import { useInterval } from '../../hooks/useInterval'
 import { apiClient } from '../../lib/api'
 import CVModule from '../../components/CVModule'
 import FocusBar from '../../components/FocusBar'
@@ -27,7 +29,13 @@ export const SessionPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
-  // Timer effect
+  // Focus pipeline refs (no re-renders)
+  const focusPayloadRef = useRef<FocusPayload | null>(null)
+
+  // Use cause label hook for 10s classification
+  const { cause, confidence, pushFocusEvent } = useCauseLabel()
+
+  // Timer effect for session elapsed time
   useEffect(() => {
     let interval: NodeJS.Timeout
 
@@ -47,12 +55,37 @@ export const SessionPage: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Handle focus data from CVModule
+  // Pipeline Step 1: CVModule.onFocusData callback → updates focusPayloadRef (no re-render)
   const handleFocusData = useCallback((payload: FocusPayload) => {
-    setCurrentFocusScore(payload.focus_score)
-    // Cause label would come from the backend classification
-    // For now, we show a simplified label based on focus score
+    focusPayloadRef.current = payload
+
+    // Pipeline Step 4: Push to useCauseLabel for 10s buffering and classification
+    const focusEvent: FocusEvent = {
+      focus_score: payload.focus_score,
+      timestamp: payload.ts,
+      blink_rate: payload.blink_rate,
+      head_pose_x: payload.head_pose_deg,
+      gaze_score: payload.focus_score
+    }
+    pushFocusEvent(focusEvent)
+  }, [pushFocusEvent])
+
+  // Pipeline Step 2 & 3: useInterval hook that reads focusPayloadRef every 1s
+  // This drives FocusBar re-renders WITHOUT causing CVModule to re-mount
+  const handleUpdateFocusScore = useCallback(() => {
+    if (focusPayloadRef.current) {
+      setCurrentFocusScore(focusPayloadRef.current.focus_score)
+    }
   }, [])
+
+  useInterval(handleUpdateFocusScore, sessionActive ? 1000 : null, [sessionActive])
+
+  // Pipeline Step 4: Update cause label from useCauseLabel classification
+  useEffect(() => {
+    if (cause) {
+      setCurrentCause(cause)
+    }
+  }, [cause])
 
   // Start session
   const handleStartSession = async () => {
@@ -76,9 +109,11 @@ export const SessionPage: React.FC = () => {
         setElapsedSeconds(0)
         setCurrentFocusScore(0.5)
         setCurrentCause('')
+        focusPayloadRef.current = null
 
         // Start webcam
         await startWebcam()
+        console.log(`Session started: ${response.data.session_id}`)
       }
     } catch (error) {
       console.error('Failed to start session:', error)
@@ -100,9 +135,12 @@ export const SessionPage: React.FC = () => {
       setSessionActive(false)
       setSessionId(null)
       setElapsedSeconds(0)
+      setCurrentCause('')
+      focusPayloadRef.current = null
 
       // Stop webcam
       stopWebcam()
+      console.log('Session ended')
     } catch (error) {
       console.error('Failed to end session:', error)
     }
@@ -229,7 +267,7 @@ export const SessionPage: React.FC = () => {
           )}
         </div>
 
-        {/* Focus Bar section */}
+        {/* Focus Bar section - visible only when session is active */}
         {sessionActive && (
           <div className="mb-12">
             <h2 className="text-lg font-semibold text-white mb-4">Focus Level</h2>
@@ -238,10 +276,15 @@ export const SessionPage: React.FC = () => {
               causeLabel={currentCause || undefined}
               className="mt-4"
             />
+            {confidence > 0 && (
+              <p className="text-xs text-slate-400 mt-2">
+                Confidence: {Math.round(confidence * 100)}%
+              </p>
+            )}
           </div>
         )}
 
-        {/* CVModule - headless, only processes when active */}
+        {/* CVModule - Headless, only mounted when session is active */}
         {sessionActive && sessionId && (
           <div className="hidden">
             <CVModule
