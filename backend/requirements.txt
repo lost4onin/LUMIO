@@ -1,3 +1,7 @@
+# Use PyTorch CPU-only wheel index — prevents pip from pulling 2 GB of NVIDIA CUDA
+# libraries that are useless on a CPU-only API server.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 # Web framework
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
