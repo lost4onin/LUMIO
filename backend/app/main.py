@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.database import init_db
-from app.routers import auth, sessions, analytics, rag, homework
+from app.routers import auth, sessions, analytics, rag, homework, students
 from app.services.redis_service import init_redis, close_redis
 from app.services.rag_service import init_rag
 
@@ -59,6 +59,7 @@ app.include_router(sessions.router,  prefix="/sessions",  tags=["sessions"])
 app.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 app.include_router(rag.router,       prefix="/rag",       tags=["rag"])
 app.include_router(homework.router,  prefix="/homework",  tags=["homework"])
+app.include_router(students.router,  prefix="/students",  tags=["students"])
 
 
 @app.get("/", tags=["health"])

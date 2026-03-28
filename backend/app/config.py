@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     # Free tier at console.groq.com — no credit card needed
     # Swap ChatOllama for ChatGroq in rag_service.py when deploying to Railway
     GROQ_API_KEY: str = Field(default="")
-    GROQ_MODEL: str = Field(default="llama3-70b-8192")
+    GROQ_MODEL: str = Field(default="llama-3.3-70b-versatile")
 
     # ── LLM mode ──────────────────────────────────────────
     # Set to "groq" to use the cloud LLM (recommended), "ollama" for local dev
