@@ -40,19 +40,19 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student }) => {
   }, [student.updated_at])
 
   return (
-    <div className=\"bg-surface border-[1.5px] border-border p-6 hover:border-ink transition\" style={{ borderRadius: '12px' }}>
+    <div className="bg-surface border-[1.5px] border-border p-6 hover:border-ink transition" style={{ borderRadius: '12px' }}>
       {/* Student name */}
-      <h3 className=\"text-ink font-display font-bold text-md mb-4 truncate\" style={{ fontSize: 'clamp(22px, 3vw, 28px)' }}>{student.student_name}</h3>
+      <h3 className="text-ink font-display font-bold text-md mb-4 truncate" style={{ fontSize: 'clamp(22px, 3vw, 28px)' }}>{student.student_name}</h3>
 
       {/* Focus bar */}
-      <div className=\"mb-6\">
+      <div className="mb-6">
         <FocusBar focusScore={student.focus_score} causeLabel={student.distraction_cause} />
       </div>
 
       {/* Risk tier badge */}
-      <div className=\"mb-4 flex items-center justify-between\">
+      <div className="mb-4 flex items-center justify-between">
         <span
-          className={`text-xs font-mono font-bold px-4 py-2 rounded-full border-[1.5px] \${riskBadgeStyle.bg} \${riskBadgeStyle.border} \${riskBadgeStyle.text}`}
+          className={`text-xs font-mono font-bold px-4 py-2 rounded-full border-[1.5px] ${riskBadgeStyle.bg} ${riskBadgeStyle.border} ${riskBadgeStyle.text}`}
           style={{ letterSpacing: '0.15em', textTransform: 'uppercase' }}
         >
           {student.risk_tier === 'low'
@@ -65,14 +65,14 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student }) => {
 
       {/* Cause label */}
       {student.distraction_cause && (
-        <div className=\"mb-4 flex items-center gap-2\">
-          <span className=\"text-accent text-sm\">✦</span>
-          <span className=\"text-xs text-muted font-mono\">{student.distraction_cause}</span>
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-accent text-sm">✦</span>
+          <span className="text-xs text-muted font-mono">{student.distraction_cause}</span>
         </div>
       )}
 
       {/* Timestamp */}
-      <div className=\"text-xs text-muted font-mono flex items-center justify-between pt-4 border-t border-border\" style={{ letterSpacing: '0.1em' }}>
+      <div className="text-xs text-muted font-mono flex items-center justify-between pt-4 border-t border-border" style={{ letterSpacing: '0.1em' }}>
         <span>UPDATED</span>
         <span>{formattedTime}</span>
       </div>

@@ -1,19 +1,14 @@
 import React, { useState, useMemo } from 'react'
-import { useAuth } from '../../hooks/useAuth'
 import useClassStream from '../../hooks/useClassStream'
 import StudentCard from '../../components/StudentCard'
 
 export const DashboardPage: React.FC = () => {
-  const { user } = useAuth()
-  const teacherId = user?.id || ''
-
   // TODO: Replace with actual class selector from auth context or URL params
   const [selectedClassId, setSelectedClassId] = useState('class-001')
 
   // Fetch live student data
   const { studentsLive, connectionState, isInitializing } = useClassStream(
-    selectedClassId,
-    teacherId
+    selectedClassId
   )
   
   // Handle class selection change

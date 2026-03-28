@@ -22,7 +22,7 @@ interface StudentInitData {
   risk_tier?: 'low' | 'moderate' | 'needs_attention'
 }
 
-const useClassStream = (classId: string, teacherId: string): UseClassStreamReturn => {
+const useClassStream = (classId: string): UseClassStreamReturn => {
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectCountRef = useRef<number>(0)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)

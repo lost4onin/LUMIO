@@ -102,41 +102,41 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ endpoint, studentI
   }, [messages])
 
   return (
-    <div className="flex flex-col h-full bg-bg\">
+    <div className="flex flex-col h-full bg-bg">
       {/* Messages list */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6\">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.length === 0 ? (
-          <div className=\"flex items-center justify-center h-full text-muted\">
-            <p className=\"text-center font-mono text-sm\">Start a conversation about your class or a specific student</p>
+          <div className="flex items-center justify-center h-full text-muted">
+            <p className="text-center font-mono text-sm">Start a conversation about your class or a specific student</p>
           </div>
         ) : (
           messages.map((message) => (
             <div key={message.id}>
               {/* Message bubble */}
               <div
-                className={`flex \${
+                className={`flex ${
                   message.role === 'user' ? 'justify-end' : 'justify-start'
                 } mb-3`}
               >
                 <div
-                  className={`max-w-xs lg:max-w-md xl:max-w-lg px-6 py-4 border-[1.5px] \${
+                  className={`max-w-xs lg:max-w-md xl:max-w-lg px-6 py-4 border-[1.5px] ${
                     message.role === 'user'
                       ? 'bg-accent border-accent text-bg'
                       : 'bg-surface border-border text-ink'
                   }`}
                   style={{ borderRadius: '12px' }}
                 >
-                  <p className=\"text-sm font-mono whitespace-pre-wrap\">{message.content}</p>
+                  <p className="text-sm font-mono whitespace-pre-wrap">{message.content}</p>
                 </div>
               </div>
 
               {/* Sources section */}
               {message.role === 'assistant' && message.sources && message.sources.length > 0 && (
-                <div className=\"flex justify-start mb-4\">
-                  <div className=\"max-w-xs lg:max-w-md xl:max-w-lg\">
+                <div className="flex justify-start mb-4">
+                  <div className="max-w-xs lg:max-w-md xl:max-w-lg">
                     <button
                       onClick={() => toggleSources(message.id)}
-                      className=\"text-xs text-accent hover:text-accent/80 font-mono font-bold flex items-center gap-2 transition\"
+                      className="text-xs text-accent hover:text-accent/80 font-mono font-bold flex items-center gap-2 transition"
                       style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}
                     >
                       <span>{expandedSources[message.id] ? '▼' : '▶'}</span>
@@ -144,9 +144,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ endpoint, studentI
                     </button>
 
                     {expandedSources[message.id] && (
-                      <div className=\"mt-3 space-y-2 pl-4 border-l-[1.5px] border-border\">
+                      <div className="mt-3 space-y-2 pl-4 border-l-[1.5px] border-border">
                         {message.sources.map((source, idx) => (
-                          <p key={idx} className=\"text-xs text-muted font-mono\">
+                          <p key={idx} className="text-xs text-muted font-mono">
                             ✦ {source}
                           </p>
                         ))}
@@ -161,12 +161,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ endpoint, studentI
 
         {/* Loading state */}
         {isLoading && (
-          <div className=\"flex justify-start\">
-            <div className=\"bg-surface border-[1.5px] border-border px-6 py-4\" style={{ borderRadius: '12px' }}>
-              <div className=\"flex gap-3\">
-                <div className=\"w-2 h-2 bg-ink rounded-full\" style={{ animation: 'pulse 0.7s infinite' }}></div>
-                <div className=\"w-2 h-2 bg-ink rounded-full\" style={{ animation: 'pulse 0.7s infinite 0.1s' }}></div>
-                <div className=\"w-2 h-2 bg-ink rounded-full\" style={{ animation: 'pulse 0.7s infinite 0.2s' }}></div>
+          <div className="flex justify-start">
+            <div className="bg-surface border-[1.5px] border-border px-6 py-4" style={{ borderRadius: '12px' }}>
+              <div className="flex gap-3">
+                <div className="w-2 h-2 bg-ink rounded-full" style={{ animation: 'pulse 0.7s infinite' }}></div>
+                <div className="w-2 h-2 bg-ink rounded-full" style={{ animation: 'pulse 0.7s infinite 0.1s' }}></div>
+                <div className="w-2 h-2 bg-ink rounded-full" style={{ animation: 'pulse 0.7s infinite 0.2s' }}></div>
               </div>
             </div>
           </div>
@@ -174,8 +174,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ endpoint, studentI
 
         {/* Error message */}
         {error && (
-          <div className=\"bg-red-50 border-[1.5px] border-red-600 p-4\">
-            <p className=\"text-xs text-red-600 font-mono\">{error}</p>
+          <div className="bg-red-50 border-[1.5px] border-red-600 p-4">
+            <p className="text-xs text-red-600 font-mono">{error}</p>
           </div>
         )}
 
@@ -183,22 +183,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ endpoint, studentI
       </div>
 
       {/* Input bar */}
-      <div className=\"border-t border-border bg-surface p-6\">
-        <div className=\"flex gap-4\">
+      <div className="border-t border-border bg-surface p-6">
+        <div className="flex gap-4">
           <input
             ref={inputRef}
-            type=\"text\"
+            type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder=\"Ask me anything...\"
+            placeholder="Ask me anything..."
             disabled={isLoading}
-            className=\"input-field flex-1\"
+            className="input-field flex-1"
           />
           <button
             onClick={() => handleSendMessage()}
             disabled={isLoading || !inputValue.trim()}
-            className=\"btn-accent whitespace-nowrap\"
+            className="btn-accent whitespace-nowrap"
           >
             {isLoading ? 'Sending...' : 'Send'}
           </button>
