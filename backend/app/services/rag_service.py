@@ -1,30 +1,22 @@
 """
-rag_service.py — FAISS vector store + retrieval service.
+rag_service.py — FAISS vector store + retrieval + Groq LLM generation.
 
-Day 5 scope:
-  - init_rag()    — load FAISS index at FastAPI startup
-  - retrieve()    — cosine similarity search → top-k relevant PDF chunks
-  - is_index_loaded() — health check
-
-Day 6 will add:
-  - get_llm()     — return ChatOllama or ChatGroq based on LLM_PROVIDER setting
-  - query_rag()   — FAISS retrieval + LangChain prompt + LLM generation
+Day 5: init_rag(), retrieve(), is_index_loaded()
+Day 6: get_llm(), query_rag() — FAISS → Groq → grounded JSON response
 
 Why split retrieval (Day 5) from generation (Day 6)?
-  FAISS retrieval is fast, deterministic, and testable without any API keys.
-  LLM generation requires Ollama running locally or a Groq API key.
-  Splitting lets us validate the retrieval pipeline today before adding the LLM.
-
-LLM provider pattern (for Day 6 reference):
-  settings.LLM_PROVIDER = "ollama" → ChatOllama(base_url=OLLAMA_BASE_URL, model=OLLAMA_MODEL)
-  settings.LLM_PROVIDER = "groq"   → ChatGroq(api_key=GROQ_API_KEY, model=GROQ_MODEL)
-  Swap with a single .env change — no code change needed.
+  FAISS retrieval is deterministic and testable without any API keys.
+  Adding LLM generation on top is a separate concern with its own failure modes.
 """
 from pathlib import Path
 from typing import List, Optional
+import json
+import re
 
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_groq import ChatGroq
+from langchain.schema import HumanMessage, SystemMessage
 
 from app.config import settings
 
@@ -124,33 +116,155 @@ def is_index_loaded() -> bool:
     return _vectorstore is not None
 
 
-# ── LLM factory (stub — Day 6) ────────────────────────────────────────────────
+# ── Diagnosis safety filter ───────────────────────────────────────────────────
+# The LLM must never use clinical labels — these words trigger a regeneration.
+DIAGNOSIS_BLACKLIST = re.compile(
+    r"\b(ADHD|disorder|diagnosis|condition|autism)\b", re.IGNORECASE
+)
 
-def get_llm():
+# ── Audience-specific system prompts ─────────────────────────────────────────
+SYSTEM_PROMPTS = {
+    "teacher": (
+        "You are a pedagogical assistant supporting teachers of children with learning difficulties. "
+        "Use only the provided context to give specific, actionable classroom strategies. "
+        "Never use: ADHD, disorder, diagnosis, condition, autism. "
+        "Output valid JSON only. No markdown, no explanation outside the JSON."
+    ),
+    "parent": (
+        "You are a warm advisor helping parents support their child at home. "
+        "Use only the provided context to give practical home strategies. "
+        "Never use: ADHD, disorder, diagnosis, condition, autism. "
+        "Output valid JSON only. No markdown, no explanation outside the JSON."
+    ),
+    "student": (
+        "You are an encouraging learning companion for a student aged 10-18. "
+        "Use only the provided context to give simple, motivating study tips. "
+        "Never use: ADHD, disorder, diagnosis, condition, autism. "
+        "Output valid JSON only. No markdown, no explanation outside the JSON."
+    ),
+}
+
+OUTPUT_SCHEMA = """{
+  "summary": "one sentence summary",
+  "for_teacher": ["strategy 1", "strategy 2", "strategy 3"],
+  "for_student": ["tip 1", "tip 2"],
+  "for_parent": ["guidance 1", "guidance 2"],
+  "sources": ["source 1", "source 2"],
+  "urgency": "low|medium|high",
+  "professional_referral": false
+}"""
+
+# Served when the LLM fails twice — always safe, never empty.
+STATIC_FALLBACK = {
+    "summary": "Student needs support — please check in with them.",
+    "for_teacher": [
+        "Check in with the student privately.",
+        "Break the current task into smaller steps.",
+        "Consider a short break.",
+    ],
+    "for_student": [
+        "Take a short break and drink some water.",
+        "Try focusing on one small task at a time.",
+    ],
+    "for_parent": [
+        "Ask your child how their day went.",
+        "Ensure they have a quiet space for homework.",
+    ],
+    "sources": [],
+    "urgency": "low",
+    "professional_referral": False,
+}
+
+
+# ── LLM factory ───────────────────────────────────────────────────────────────
+
+def get_llm() -> ChatGroq:
     """
-    Return the configured LLM instance.
-    Day 6 will implement this — stub kept here so Day 6 can fill it in
-    without changing the function signature or import structure.
-
-    Day 6 implementation:
-        if settings.LLM_PROVIDER == "groq":
-            from langchain_groq import ChatGroq
-            return ChatGroq(api_key=settings.GROQ_API_KEY, model=settings.GROQ_MODEL)
-        else:
-            from langchain_community.chat_models import ChatOllama
-            return ChatOllama(base_url=settings.OLLAMA_BASE_URL, model=settings.OLLAMA_MODEL)
+    Return a Groq LLM instance.
+    Raises ValueError if the API key is missing so the developer gets a clear message.
     """
-    return None
+    if not settings.GROQ_API_KEY:
+        raise ValueError(
+            "GROQ_API_KEY is not set. "
+            "Get a free key at https://console.groq.com then add it to .env"
+        )
+    return ChatGroq(
+        api_key=settings.GROQ_API_KEY,
+        model=settings.GROQ_MODEL,
+        temperature=0.3,
+    )
 
 
-# ── RAG query (stub — Day 6) ──────────────────────────────────────────────────
+def _parse_llm_json(raw: str) -> dict:
+    """Strip markdown fences (```json ... ```) then parse JSON."""
+    raw = re.sub(r"```json|```", "", raw).strip()
+    return json.loads(raw)
 
-async def query_rag(role: str, message: str, student_context: dict | None = None) -> dict:
+
+# ── RAG query ─────────────────────────────────────────────────────────────────
+
+async def query_rag(
+    archetype: str,
+    rag_query_seed: str,
+    student_context: dict,
+    professional_referral_override: bool,
+    audience: str = "teacher",
+) -> dict:
     """
-    Retrieve relevant chunks + generate a grounded LLM response.
-    Day 6 will implement this using get_llm() + retrieved chunks.
+    Full RAG pipeline: FAISS retrieval → Groq LLM → validated JSON.
+
+    Two-strike loop:
+      Strike 1: blacklisted word found → remind the LLM and retry once.
+      Strike 2: any failure (parse error, blacklist again) → serve STATIC_FALLBACK.
+
+    The professional_referral_override from the rule engine always wins — the
+    LLM value is discarded. This is a hard safety requirement.
     """
-    return {
-        "answer": "RAG generation not yet implemented — coming Day 6.",
-        "sources": [],
-    }
+    chunks = retrieve(rag_query_seed, k=4)
+    context_text = "\n\n".join(
+        f"[{c['source']}]\n{c['content']}" for c in chunks
+    ) if chunks else "No specific context available."
+
+    student_info = (
+        f"Student: {student_context.get('full_name', 'Unknown')}, "
+        f"avg focus (7d): {student_context.get('avg_focus_7d', 'N/A')}, "
+        f"distraction cause: {student_context.get('distraction_cause', archetype)}"
+    )
+
+    user_message = (
+        f"Archetype: {archetype}\n"
+        f"Student info: {student_info}\n\n"
+        f"Context:\n{context_text}\n\n"
+        f"Output JSON matching this schema exactly:\n{OUTPUT_SCHEMA}"
+    )
+
+    llm = get_llm()
+    strikes = 0
+    result = None
+
+    while strikes < 2:
+        try:
+            response = await llm.ainvoke([
+                SystemMessage(content=SYSTEM_PROMPTS.get(audience, SYSTEM_PROMPTS["teacher"])),
+                HumanMessage(content=user_message),
+            ])
+            parsed = _parse_llm_json(response.content)
+
+            if DIAGNOSIS_BLACKLIST.search(json.dumps(parsed)):
+                strikes += 1
+                user_message += "\nReminder: Do NOT use ADHD, disorder, diagnosis, condition, or autism."
+                continue
+
+            result = parsed
+            break
+
+        except Exception as e:
+            print(f"[rag] LLM call failed (strike {strikes + 1}): {e}")
+            strikes += 1
+
+    if result is None:
+        result = STATIC_FALLBACK.copy()
+
+    # Rule engine value always wins — LLM cannot override this
+    result["professional_referral"] = professional_referral_override
+    return result
