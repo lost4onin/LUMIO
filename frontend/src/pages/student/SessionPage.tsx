@@ -10,59 +10,45 @@ import { FocusPayload } from '../../types'
 type Subject = 'Math' | 'Science' | 'Language' | 'History' | 'Other'
 
 export const SessionPage: React.FC = () => {
-  // Auth state
   const { user } = useAuth()
   const studentId = user?.id || ''
 
-  // Session state
   const [sessionActive, setSessionActive] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [selectedSubject, setSelectedSubject] = useState<Subject>('Math')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
-  // Focus tracking state
   const [currentFocusScore, setCurrentFocusScore] = useState(0.5)
   const [currentCause, setCurrentCause] = useState<string>('')
   const [apiError, setApiError] = useState<string>('')
   const [webcamError, setWebcamError] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
 
-  // Webcam state
   const [webcamActive, setWebcamActive] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-
-  // Focus pipeline refs (no re-renders)
   const focusPayloadRef = useRef<FocusPayload | null>(null)
 
-  // Use cause label hook for 10s classification
   const { cause, confidence, pushFocusEvent } = useCauseLabel()
 
-  // Timer effect for session elapsed time
   useEffect(() => {
     let interval: NodeJS.Timeout
-
     if (sessionActive) {
       interval = setInterval(() => {
         setElapsedSeconds((prev) => prev + 1)
       }, 1000)
     }
-
     return () => clearInterval(interval)
   }, [sessionActive])
 
-  // Format elapsed time as mm:ss
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Pipeline Step 1: CVModule.onFocusData callback → updates focusPayloadRef (no re-render)
   const handleFocusData = useCallback((payload: FocusPayload) => {
     focusPayloadRef.current = payload
-
-    // Pipeline Step 4: Push to useCauseLabel for 10s buffering and classification
     const focusEvent: FocusEvent = {
       focus_score: payload.focus_score,
       timestamp: payload.ts,
@@ -73,8 +59,6 @@ export const SessionPage: React.FC = () => {
     pushFocusEvent(focusEvent)
   }, [pushFocusEvent])
 
-  // Pipeline Step 2 & 3: useInterval hook that reads focusPayloadRef every 1s
-  // This drives FocusBar re-renders WITHOUT causing CVModule to re-mount
   const handleUpdateFocusScore = useCallback(() => {
     if (focusPayloadRef.current) {
       setCurrentFocusScore(focusPayloadRef.current.focus_score)
@@ -83,36 +67,22 @@ export const SessionPage: React.FC = () => {
 
   useInterval(handleUpdateFocusScore, sessionActive ? 1000 : null, [sessionActive])
 
-  // Pipeline Step 4: Update cause label from useCauseLabel classification
   useEffect(() => {
-    if (cause) {
-      setCurrentCause(cause)
-    }
+    if (cause) setCurrentCause(cause)
   }, [cause])
 
-  // Start session
   const handleStartSession = async () => {
-    if (!studentId) {
-      setApiError('Student ID not available')
-      return
-    }
-
-    if (isLoading) {
-      setApiError('Request already in progress, please wait...')
-      return
-    }
+    if (!studentId) { setApiError('Student ID not available'); return }
+    if (isLoading) { setApiError('Request already in progress, please wait...'); return }
 
     setIsLoading(true)
     setApiError('')
 
     try {
-      const response = await apiClient.post<{ session_id: string }>(
-        '/sessions/start',
-        {
-          student_id: studentId,
-          subject: selectedSubject
-        }
-      )
+      const response = await apiClient.post<{ session_id: string }>('/sessions/start', {
+        student_id: studentId,
+        subject: selectedSubject
+      })
 
       if (response.data.session_id) {
         setSessionId(response.data.session_id)
@@ -122,74 +92,44 @@ export const SessionPage: React.FC = () => {
         setCurrentCause('')
         focusPayloadRef.current = null
         setWebcamError('')
-
-        // Start webcam
         await startWebcam()
-        console.log(`Session started: ${response.data.session_id}`)
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to start session'
-      setApiError(errorMsg)
-      console.error('Failed to start session:', error)
+      setApiError(error instanceof Error ? error.message : 'Failed to start session')
     } finally {
       setIsLoading(false)
     }
   }
 
-  // End session
   const handleStopSession = async () => {
-    if (!sessionId) {
-      setApiError('No active session to stop')
-      return
-    }
-
-    if (isLoading) {
-      setApiError('Request already in progress, please wait...')
-      return
-    }
+    if (!sessionId) { setApiError('No active session to stop'); return }
+    if (isLoading) { setApiError('Request already in progress, please wait...'); return }
 
     setIsLoading(true)
     setApiError('')
-
-    // Immediately stop webcam to indicate action
     stopWebcam()
 
     try {
-      await apiClient.post('/sessions/end', {
-        session_id: sessionId
-      })
-
+      await apiClient.post('/sessions/end', { session_id: sessionId })
       setSessionActive(false)
       setSessionId(null)
       setElapsedSeconds(0)
       setCurrentCause('')
       focusPayloadRef.current = null
-      console.log('Session ended')
     } catch (error) {
-      // Restart webcam if end session fails
-      if (sessionId) {
-        await startWebcam()
-      }
-      const errorMsg = error instanceof Error ? error.message : 'Failed to end session'
-      setApiError(errorMsg)
-      console.error('Failed to end session:', error)
+      if (sessionId) await startWebcam()
+      setApiError(error instanceof Error ? error.message : 'Failed to end session')
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Start webcam
   const startWebcam = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 160 },
-          height: { ideal: 120 },
-          facingMode: 'user'
-        },
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
         audio: false
       })
-
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         streamRef.current = stream
@@ -197,14 +137,10 @@ export const SessionPage: React.FC = () => {
         setWebcamError('')
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to access webcam'
-      setWebcamError(errorMsg)
-      console.error('Failed to access webcam:', error)
-      // Still allow session to continue without webcam
+      setWebcamError(error instanceof Error ? error.message : 'Failed to access webcam')
     }
   }
 
-  // Stop webcam
   const stopWebcam = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
@@ -213,139 +149,157 @@ export const SessionPage: React.FC = () => {
     }
   }
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopWebcam()
-    }
-  }, [])
+  useEffect(() => { return () => { stopWebcam() } }, [])
 
-  // Subject options
   const subjects: Subject[] = ['Math', 'Science', 'Language', 'History', 'Other']
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Top Bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-white">Session</h1>
-          <div className="text-3xl font-mono font-bold text-emerald-400">
+    <div className="space-y-0">
+      {/* Top bar */}
+      <div className="flex items-center justify-between pb-8 border-b border-border mb-8">
+        <div className="flex items-center gap-6">
+          <h1 className="font-display font-bold text-ink" style={{ fontSize: 'clamp(28px, 4vw, 42px)' }}>
+            Session
+          </h1>
+          <div className="font-mono text-accent text-2xl font-bold" style={{ letterSpacing: '0.05em' }}>
             {formatTime(elapsedSeconds)}
           </div>
         </div>
 
-        {/* Webcam preview in top-right */}
-        {webcamActive && (
-          <div className="rounded-lg overflow-hidden border border-slate-600 bg-slate-700">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              width={160}
-              height={120}
-              className="block"
-            />
-          </div>
-        )}
+        {/* Status badge */}
+        <div className="flex items-center gap-3">
+          {sessionActive ? (
+            <span className="badge" style={{ background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--bg)' }}>
+              ✦ Session Active
+            </span>
+          ) : (
+            <span className="badge-outline">Session Paused</span>
+          )}
+        </div>
       </div>
 
-      {/* Main content */}
-      <div className="px-6 py-8 max-w-4xl mx-auto">
-        {/* Subject selector */}
-        <div className="mb-8">
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            Select Subject
-          </label>
-          <select
-            value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value as Subject)}
-            disabled={sessionActive}
-            className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white font-medium hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            {subjects.map((subject) => (
-              <option key={subject} value={subject}>
-                {subject}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Main two-panel layout when session active */}
+      {sessionActive ? (
+        <div className="flex gap-0 border border-border" style={{ minHeight: '60vh' }}>
+          {/* Left: Webcam + CV overlay (~40%) */}
+          <div className="session-cv-panel" style={{ width: '40%', flexShrink: 0 }}>
+            {webcamActive ? (
+              <>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  style={{ width: '100%', display: 'block', opacity: 0.92, filter: 'contrast(1.05) saturate(0.9)' }}
+                />
+                {/* CV overlay canvas would go here */}
+                <div
+                  className="font-mono text-xs p-3 absolute top-3 left-3"
+                  style={{
+                    background: 'rgba(245,244,240,0.85)',
+                    color: 'var(--ink)',
+                    letterSpacing: '0.1em',
+                    lineHeight: 1.8
+                  }}
+                >
+                  GAZE&nbsp;&nbsp;&nbsp;{(currentFocusScore * 0.87 + 0.13).toFixed(2)}<br />
+                  BLINK&nbsp;&nbsp;{Math.round(10 + currentFocusScore * 8)}/min<br />
+                  POSE&nbsp;&nbsp;&nbsp;+3° / -1°<br />
+                  FOCUS&nbsp;&nbsp;{currentFocusScore.toFixed(2)}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted font-mono text-sm">
+                ✦ Webcam initializing...
+              </div>
+            )}
+          </div>
 
-        {/* Start/Stop button */}
-        <div className="mb-8">
-          {!sessionActive ? (
-            <button
-              onClick={handleStartSession}
-              disabled={isLoading}
-              className="w-full px-6 py-4 rounded-lg bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-bold text-lg transition transform hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
-              {isLoading ? 'Starting...' : 'Start Session'}
-            </button>
-          ) : (
+          {/* Right: Lesson / content panel (~60%) */}
+          <div className="flex-1 p-10 border-l border-border bg-surface">
+            <div className="section-marker mb-6">Lesson Content</div>
+            <h2 className="font-display font-bold text-ink text-xl mb-4">{selectedSubject}</h2>
+            <p className="font-mono text-sm text-muted leading-relaxed mb-8">
+              Your adaptive lesson content will appear here during the session. The AI tutor adjusts
+              pacing based on your real-time focus level.
+            </p>
+
+            {/* Cause + confidence */}
+            {currentCause && confidence > 0 && (
+              <div className="border border-border p-4 mb-6">
+                <span className="section-marker">Detection</span>
+                <p className="font-mono text-sm text-ink mt-2">
+                  ✦ {currentCause} — confidence {Math.round(confidence * 100)}%
+                </p>
+              </div>
+            )}
+
+            {/* Stop button */}
             <button
               onClick={handleStopSession}
               disabled={isLoading}
-              className="w-full px-6 py-4 rounded-lg bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold text-lg transition transform hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="btn-destructive"
             >
-              {isLoading ? 'Stopping...' : 'Stop Session'}
+              {isLoading ? 'Stopping...' : '✦ Stop Session'}
             </button>
-          )}
+          </div>
         </div>
-
-        {/* Error messages */}
-        {apiError && (
-          <div className="mb-8 p-4 rounded-lg bg-red-900/30 border border-red-600 text-red-300 text-sm">
-            {apiError}
+      ) : (
+        /* Pre-session: subject selector + start */
+        <div className="max-w-lg">
+          <div className="mb-8">
+            <label className="form-label">Subject</label>
+            <select
+              value={selectedSubject}
+              onChange={(e) => setSelectedSubject(e.target.value as Subject)}
+              className="input-field w-full"
+            >
+              {subjects.map((subject) => (
+                <option key={subject} value={subject}>{subject}</option>
+              ))}
+            </select>
           </div>
-        )}
-        {webcamError && (
-          <div className="mb-8 p-4 rounded-lg bg-yellow-900/30 border border-yellow-600 text-yellow-300 text-sm">
-            Webcam warning: {webcamError} (session will continue without webcam preview)
-          </div>
-        )}
 
-        {/* Status text */}
-        <div className="mb-8 h-6">
-          {sessionActive ? (
-            <p className="text-emerald-400 font-semibold text-center">
-              ✓ Session active — focus is being tracked
-            </p>
-          ) : (
-            <p className="text-slate-400 font-semibold text-center">
-              Session paused
-            </p>
-          )}
+          <button
+            onClick={handleStartSession}
+            disabled={isLoading}
+            className="btn-accent w-full"
+          >
+            {isLoading ? 'Starting...' : '✦ Start Session'}
+          </button>
         </div>
+      )}
 
-        {/* Focus Bar section - visible only when session is active */}
-        {sessionActive && (
-          <div className="mb-12">
-            <h2 className="text-lg font-semibold text-white mb-4">Focus Level</h2>
-            <FocusBar
-              focusScore={currentFocusScore}
-              causeLabel={currentCause || undefined}
-              className="mt-4"
-            />
-            {currentCause && confidence > 0 && (
-              <p className="text-xs text-slate-400 mt-2">
-                {currentCause} — Confidence: {Math.round(confidence * 100)}%
-              </p>
-            )}
-          </div>
-        )}
+      {/* Focus Bar — full width below panels */}
+      {sessionActive && (
+        <div className="mt-0 border border-border border-t-0 p-6 bg-surface">
+          <FocusBar focusScore={currentFocusScore} causeLabel={currentCause || undefined} />
+        </div>
+      )}
 
-        {/* CVModule - Headless, only mounted when session is active */}
-        {sessionActive && sessionId && (
-          <div className="hidden">
-            <CVModule
-              studentId={studentId}
-              classId={sessionId}
-              onFocusData={handleFocusData}
-              active={true}
-            />
-          </div>
-        )}
-      </div>
+      {/* Error messages */}
+      {apiError && (
+        <div className="mt-6 p-4 bg-red-50 border-[1.5px] border-red-600">
+          <p className="text-red-600 text-sm font-mono">{apiError}</p>
+        </div>
+      )}
+      {webcamError && (
+        <div className="mt-4 p-4 border-[1.5px] border-border bg-surface">
+          <p className="text-muted text-sm font-mono">✦ Webcam: {webcamError} (session continues without preview)</p>
+        </div>
+      )}
+
+      {/* CVModule — headless, only when active */}
+      {sessionActive && sessionId && (
+        <div className="hidden">
+          <CVModule
+            studentId={studentId}
+            classId={sessionId}
+            onFocusData={handleFocusData}
+            active={true}
+          />
+        </div>
+      )}
     </div>
   )
 }

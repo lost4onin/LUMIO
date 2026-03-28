@@ -16,10 +16,6 @@ interface ProfileData {
   }>
 }
 
-/**
- * OverviewPage - Parent dashboard showing child's learning overview
- * Displays risk tier, focus trends, suggestions, and homework status
- */
 const OverviewPage: React.FC = () => {
   const { childId } = useParams<{ childId: string }>()
   const [profile, setProfile] = useState<ProfileData | null>(null)
@@ -30,30 +26,23 @@ const OverviewPage: React.FC = () => {
     const fetchProfile = async () => {
       try {
         setLoading(true)
-        if (!childId) {
-          setError('Child ID not found')
-          return
-        }
-        const response = await apiClient.get<ProfileData>(
-          `/students/${childId}/profile`
-        )
+        if (!childId) { setError('Child ID not found'); return }
+        const response = await apiClient.get<ProfileData>(`/students/${childId}/profile`)
         setProfile(response.data)
         setError(null)
       } catch (err: any) {
         setError(err.message || 'Failed to load profile')
-        console.error('Error fetching profile:', err)
       } finally {
         setLoading(false)
       }
     }
-
     fetchProfile()
   }, [childId])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-slate-400">Loading...</p>
+        <p className="text-muted font-mono text-sm" style={{ animation: 'pulse 1.5s infinite' }}>Loading...</p>
       </div>
     )
   }
@@ -61,107 +50,98 @@ const OverviewPage: React.FC = () => {
   if (error || !profile) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-red-400">{error || 'No profile data available'}</p>
+        <p className="text-red-600 font-mono text-sm">{error || 'No profile data available'}</p>
       </div>
     )
   }
 
-  // Risk tier styling
   const riskConfig = {
     low: {
-      badge: 'bg-green-900 text-green-200',
+      style: { background: '#f0fdf4', border: '1.5px solid #166534', color: '#166534' },
       label: 'Doing well',
     },
     moderate: {
-      badge: 'bg-amber-900 text-amber-200',
+      style: { background: '#fffbeb', border: '1.5px solid #92400e', color: '#92400e' },
       label: 'Monitor',
     },
     needs_attention: {
-      badge: 'bg-red-900 text-red-200',
+      style: { background: '#fef2f2', border: '1.5px solid #991b1b', color: '#991b1b' },
       label: 'Needs support',
     },
   }
 
   const riskStyle = riskConfig[profile.risk_tier]
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <span className="badge-outline">Pending</span>
+      case 'submitted':
+        return <span className="badge" style={{ background: 'var(--ink)', color: 'var(--bg)' }}>Submitted</span>
+      case 'graded':
+        return <span className="badge" style={{ background: '#166534', color: '#dcfce7', borderColor: '#166534' }}>Graded</span>
+      default:
+        return <span className="badge-outline">{status}</span>
+    }
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Header */}
-      <div>
-        <h1 className="text-4xl font-bold text-white mb-2">{profile.name}</h1>
-        <p className="text-slate-400 text-lg">
+      <div className="pb-6 border-b border-border">
+        <h1 className="font-display font-bold text-ink mb-2" style={{ fontSize: 'clamp(28px, 4vw, 42px)' }}>
+          {profile.name}
+        </h1>
+        <p className="font-mono text-sm text-muted" style={{ letterSpacing: '0.1em' }}>
           Your child's learning overview
         </p>
       </div>
 
-      {/* Risk tier badge */}
-      <div className="flex items-center gap-3">
-        <div className={`px-4 py-2 rounded-lg font-semibold ${riskStyle.badge}`}>
+      {/* Risk tier + focus avg */}
+      <div className="flex items-center gap-4">
+        <span
+          className="font-mono text-xs font-bold px-4 py-2 rounded-full"
+          style={{ ...riskStyle.style, letterSpacing: '0.15em', textTransform: 'uppercase' }}
+        >
           {riskStyle.label}
-        </div>
-        <p className="text-slate-400 text-sm">
+        </span>
+        <span className="font-mono text-xs text-muted" style={{ letterSpacing: '0.1em' }}>
           Focus this week: {Math.round(profile.focus_avg_7d * 100)}%
-        </p>
+        </span>
       </div>
 
       {/* Focus trend chart */}
-      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-        <h2 className="text-xl font-semibold text-white mb-4">
-          Focus Trends (Last 7 Days)
-        </h2>
+      <div className="bg-surface border border-border p-8">
+        <span className="section-marker mb-4 block">Focus Trends — Last 7 Days</span>
         <FocusTrendChart data={profile.focus_history} height={250} />
       </div>
 
-      {/* Suggestions section */}
+      {/* Suggestions */}
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">
-          Helpful tips for home
-        </h2>
+        <span className="section-marker mb-6 block">Helpful Tips for Home</span>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {profile.for_parent.map((suggestion, idx) => (
-            <div
-              key={idx}
-              className="bg-slate-800 rounded-lg p-4 border border-slate-700 flex gap-3"
-            >
-              <div className="text-yellow-400 text-xl flex-shrink-0">💡</div>
-              <p className="text-slate-200 text-sm">{suggestion}</p>
+            <div key={idx} className="bg-surface border border-border p-5 flex gap-4">
+              <span className="text-accent text-sm flex-shrink-0">✦</span>
+              <p className="font-mono text-sm text-ink leading-relaxed">{suggestion}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Homework completion */}
+      {/* Homework */}
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Assignments</h2>
-        <div className="space-y-2">
+        <span className="section-marker mb-6 block">Assignments</span>
+        <div className="space-y-3">
           {profile.homework.length > 0 ? (
             profile.homework.map((hw, idx) => (
-              <div
-                key={idx}
-                className="bg-slate-800 rounded-lg p-4 border border-slate-700 flex items-center justify-between"
-              >
-                <p className="text-slate-200">{hw.title}</p>
-                <div className="flex gap-2">
-                  {hw.status === 'pending' && (
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-700 text-slate-300">
-                      Pending
-                    </span>
-                  )}
-                  {hw.status === 'submitted' && (
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-900 text-blue-200">
-                      Submitted
-                    </span>
-                  )}
-                  {hw.status === 'graded' && (
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-900 text-green-200">
-                      Graded
-                    </span>
-                  )}
-                </div>
+              <div key={idx} className="bg-surface border border-border p-5 flex items-center justify-between">
+                <p className="font-mono text-sm text-ink">{hw.title}</p>
+                {getStatusBadge(hw.status)}
               </div>
             ))
           ) : (
-            <p className="text-slate-400">No assignments yet</p>
+            <p className="text-muted font-mono text-sm">✦ No assignments yet</p>
           )}
         </div>
       </div>

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LUMIO</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Syne+Mono&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f5f4f0;
+    --ink: #1a1a1a;
+    --accent: #ff5c00;
+    --muted: #999;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Syne', sans-serif;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  #cursor {
+    position: fixed;
+    width: 12px;
+    height: 12px;
+    background: var(--ink);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s ease, width 0.3s ease, height 0.3s ease, background 0.3s ease;
+    mix-blend-mode: multiply;
+  }
+  #cursor.big {
+    width: 60px;
+    height: 60px;
+    background: rgba(26,26,26,0.08);
+    border: 1.5px solid var(--ink);
+  }
+
+  /* Nav */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 28px 48px;
+    mix-blend-mode: multiply;
+  }
+  .nav-logo {
+    font-family: 'Syne Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink);
+    opacity: 0.5;
+  }
+  .nav-links {
+    display: flex;
+    gap: 36px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: 'Syne Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink);
+    text-decoration: none;
+    opacity: 0.45;
+    transition: opacity 0.2s;
+  }
+  .nav-links a:hover { opacity: 1; }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* SVG Halftone filter */
+  .svg-filters { position: absolute; width: 0; height: 0; }
+
+  /* Main LUMIO text */
+  .lumio-word {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+    user-select: none;
+    z-index: 2;
+    transform: translateY(var(--scroll-y, 0px));
+    transition: transform 0.05s linear;
+  }
+
+  .letter-wrap {
+    position: relative;
+    display: inline-block;
+    overflow: visible;
+  }
+
+  .letter {
+    display: inline-block;
+    font-size: clamp(100px, 18vw, 220px);
+    font-weight: 800;
+    line-height: 0.9;
+    color: var(--ink);
+    letter-spacing: -0.03em;
+    transition: filter 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: filter;
+    position: relative;
+  }
+
+  /* Halftone overlay on letters when blurry */
+  .letter::after {
+    content: attr(data-char);
+    position: absolute;
+    inset: 0;
+    display: inline-block;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    color: transparent;
+    background-image: radial-gradient(circle, var(--ink) 1.5px, transparent 1.5px);
+    background-size: 6px 6px;
+    -webkit-background-clip: text;
+    background-clip: text;
+    opacity: var(--halftone-opacity, 0);
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+
+  /* Superscript dot */
+  .letter-sup {
+    display: inline-block;
+    font-size: clamp(14px, 2.5vw, 32px);
+    font-weight: 700;
+    align-self: flex-start;
+    margin-top: 0.18em;
+    margin-left: 4px;
+    transition: filter 0.4s ease;
+    color: var(--accent);
+  }
+
+  /* Subtitle */
+  .hero-sub {
+    position: relative;
+    z-index: 2;
+    margin-top: 28px;
+    font-family: 'Syne Mono', monospace;
+    font-size: clamp(11px, 1.2vw, 15px);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink);
+    opacity: 0.38;
+    text-align: center;
+    transition: filter 0.4s ease, opacity 0.4s ease;
+    transform: translateY(var(--scroll-sub, 0px));
+    will-change: filter, transform;
+  }
+
+  /* Scroll sections */
+  .section {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 80px;
+    position: relative;
+  }
+
+  .section-inner {
+    max-width: 900px;
+    width: 100%;
+  }
+
+  .section-label {
+    font-family: 'Syne Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 32px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .section-label.visible { opacity: 1; transform: none; }
+
+  .section-heading {
+    font-size: clamp(42px, 7vw, 96px);
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.9s ease 0.1s, transform 0.9s ease 0.1s;
+    mix-blend-mode: multiply;
+  }
+  .section-heading.visible { opacity: 1; transform: none; }
+
+  .section-body {
+    font-family: 'Syne Mono', monospace;
+    font-size: 15px;
+    line-height: 1.9;
+    color: var(--muted);
+    margin-top: 36px;
+    max-width: 520px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s ease 0.25s, transform 0.8s ease 0.25s;
+  }
+  .section-body.visible { opacity: 1; transform: none; }
+
+  /* Horizontal rule */
+  .hr {
+    border: none;
+    border-top: 1px solid rgba(26,26,26,0.1);
+    margin: 0 48px;
+  }
+
+  /* Stats row */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border-top: 1px solid rgba(26,26,26,0.1);
+    border-left: 1px solid rgba(26,26,26,0.1);
+    margin: 80px 48px;
+  }
+  .stat {
+    padding: 48px 40px;
+    border-right: 1px solid rgba(26,26,26,0.1);
+    border-bottom: 1px solid rgba(26,26,26,0.1);
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .stat.visible { opacity: 1; transform: none; }
+  .stat-num {
+    font-size: clamp(36px, 5vw, 72px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+  .stat-num span { color: var(--accent); }
+  .stat-label {
+    font-family: 'Syne Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 12px;
+  }
+
+  /* CTA */
+  .cta-section {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 120px 48px;
+  }
+  .cta-big {
+    font-size: clamp(56px, 10vw, 140px);
+    font-weight: 800;
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 1s ease, transform 1s ease;
+  }
+  .cta-big.visible { opacity: 1; transform: none; }
+  .which-label {
+    font-family: 'Syne Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 56px;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.7s ease 0.3s, transform 0.7s ease 0.3s;
+  }
+  .which-label.visible { opacity: 1; transform: none; }
+  .role-btns {
+    display: flex;
+    gap: 16px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s ease 0.45s, transform 0.8s ease 0.45s;
+  }
+  .role-btns.visible { opacity: 1; transform: none; }
+  .role-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 17px 40px;
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid rgba(26,26,26,0.2);
+    border-radius: 100px;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    cursor: none;
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, transform 0.2s ease;
+  }
+  .role-btn .role-icon {
+    font-size: 9px;
+    color: var(--accent);
+    transition: transform 0.3s ease;
+  }
+  .role-btn:hover {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+    transform: translateY(-3px);
+  }
+  .role-btn:hover .role-icon { transform: rotate(45deg); }
+
+  /* Footer */
+  footer {
+    padding: 40px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(26,26,26,0.1);
+  }
+  footer span {
+    font-family: 'Syne Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  footer a {
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  footer a:hover { color: var(--accent); }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 200px 200px;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+
+<!-- SVG filters for halftone -->
+<svg class="svg-filters" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="halftone">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="noise"/>
+      <feColorMatrix type="saturate" values="0" in="noise" result="gray"/>
+    </filter>
+  </defs>
+</svg>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-logo">Unblur Studio</div>
+  <ul class="nav-links">
+    <li><a href="#">About</a></li>
+    <li><a href="#">Learn</a></li>
+    <li><a href="#">Focus</a></li>
+    <li><a href="#">Join</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section class="hero" id="hero">
+  <div class="lumio-word" id="lumioWord">
+    <div class="letter-wrap">
+      <span class="letter" data-char="L" data-index="0">L</span>
+    </div>
+    <div class="letter-wrap">
+      <span class="letter" data-char="U" data-index="1">U</span>
+    </div>
+    <div class="letter-wrap">
+      <span class="letter" data-char="M" data-index="2">M</span>
+    </div>
+    <div class="letter-wrap">
+      <span class="letter" data-char="I" data-index="3">I</span>
+    </div>
+    <div class="letter-wrap">
+      <span class="letter" data-char="O" data-index="4">O</span>
+    </div>
+    <span class="letter-sup">²</span>
+  </div>
+
+  <p class="hero-sub" id="heroSub">Focus-first learning platform — built for ADHD minds</p>
+
+
+</section>
+
+<hr class="hr">
+
+<!-- Section 1 -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label reveal">— What we do</div>
+    <h2 class="section-heading reveal">Learning that<br><em style="font-style:italic;color:var(--accent)">actually</em> sticks.</h2>
+    <p class="section-body reveal">Lumio is an AI-powered platform designed for the way ADHD brains work — short bursts, adaptive pacing, and real-time focus tracking. Not a workaround. A superpower.</p>
+  </div>
+</section>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat reveal">
+    <div class="stat-num">3<span>×</span></div>
+    <div class="stat-label">Faster retention</div>
+  </div>
+  <div class="stat reveal" style="transition-delay:0.1s">
+    <div class="stat-num">92<span>%</span></div>
+    <div class="stat-label">Focus improvement</div>
+  </div>
+  <div class="stat reveal" style="transition-delay:0.2s">
+    <div class="stat-num">10<span>k+</span></div>
+    <div class="stat-label">Active learners</div>
+  </div>
+</div>
+
+<!-- Section 2 -->
+<section class="section">
+  <div class="section-inner" style="margin-left:auto">
+    <div class="section-label reveal">— How it works</div>
+    <h2 class="section-heading reveal">Your focus.<br>Your flow.</h2>
+    <p class="section-body reveal">Our CV module watches for distraction in real time. Our RAG engine adapts the lesson. You stay in the zone — without even noticing.</p>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-big reveal">Start<br>focusing<br><em style="font-style:italic;color:var(--accent)">now.</em></div>
+  <p class="which-label reveal">— which are you?</p>
+  <div class="role-btns reveal">
+    <a href="login.html?role=student" class="role-btn">
+      <span class="role-icon">✦</span>Student
+    </a>
+    <a href="login.html?role=teacher" class="role-btn">
+      <span class="role-icon">✦</span>Teacher
+    </a>
+    <a href="login.html?role=parent" class="role-btn">
+      <span class="role-icon">✦</span>Parent
+    </a>
+  </div>
+</section>
+
+<footer>
+  <span>© 2026 Lumio — by Unblur</span>
+  <span><a href="#">Privacy</a> &nbsp;·&nbsp; <a href="#">Terms</a> &nbsp;·&nbsp; <a href="#">Contact</a></span>
+</footer>
+
+<script>
+  // ─── Custom cursor ───────────────────────────────────────────
+  const cursor = document.getElementById('cursor');
+  let mx = window.innerWidth / 2, my = window.innerHeight / 2;
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    cursor.style.left = mx + 'px';
+    cursor.style.top = my + 'px';
+  });
+  document.querySelectorAll('a, button').forEach(el => {
+    el.addEventListener('mouseenter', () => cursor.classList.add('big'));
+    el.addEventListener('mouseleave', () => cursor.classList.remove('big'));
+  });
+
+  // ─── Per-letter depth-of-field blur ─────────────────────────
+  const letters = document.querySelectorAll('.letter');
+  const heroSub = document.getElementById('heroSub');
+  const lumioWord = document.getElementById('lumioWord');
+  const hero = document.getElementById('hero');
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  let scrollY = 0;
+  let targetScrollY = 0;
+
+  // Letter positions (computed after layout)
+  function getLetterCenters() {
+    return Array.from(letters).map(el => {
+      const r = el.getBoundingClientRect();
+      return r.left + r.width / 2;
+    });
+  }
+
+  function applyBlurFromMouse(x) {
+    const centers = getLetterCenters();
+    const wordRect = lumioWord.getBoundingClientRect();
+    const wordWidth = wordRect.width;
+    const wordLeft = wordRect.left;
+    const focusX = x; // where the "lens" is
+
+    letters.forEach((letter, i) => {
+      const cx = centers[i];
+      if (!cx) return;
+      const dist = Math.abs(cx - focusX);
+      const maxDist = wordWidth * 0.7;
+      const t = Math.min(dist / maxDist, 1);
+      // Blur: 0 at focus, up to 18px at edges
+      const blurAmount = t * t * 22;
+      // Halftone: more blurry = more halftone
+      const halftone = t * t * 0.85;
+      letter.style.filter = `blur(${blurAmount}px)`;
+      letter.style.setProperty('--halftone-opacity', halftone);
+    });
+  }
+
+  // Scroll-based blur (global defocus)
+  function applyScrollBlur(sy) {
+    const maxScroll = window.innerHeight * 0.6;
+    const t = Math.min(sy / maxScroll, 1);
+    const globalBlur = t * 30;
+    const subBlur = t * 20;
+
+    // Y parallax
+    lumioWord.style.transform = `translateY(${-sy * 0.35}px)`;
+    heroSub.style.transform = `translateY(${-sy * 0.2}px)`;
+
+    // Fade/blur subtitle with scroll
+    heroSub.style.filter = `blur(${subBlur}px)`;
+    heroSub.style.opacity = Math.max(0.38 - t * 0.4, 0);
+
+    // Apply scroll blur additively on letters
+    // (mouse blur applied in mousemove)
+    return globalBlur;
+  }
+
+  // Mouse move on hero
+  document.addEventListener('mousemove', e => {
+    if (window.scrollY < window.innerHeight) {
+      applyBlurFromMouse(e.clientX);
+    }
+  });
+
+  // Leave hero: blur all
+  hero.addEventListener('mouseleave', () => {
+    letters.forEach(l => {
+      l.style.filter = 'blur(12px)';
+      l.style.setProperty('--halftone-opacity', 0.4);
+    });
+    heroSub.style.filter = 'blur(6px)';
+  });
+  hero.addEventListener('mouseenter', () => {
+    heroSub.style.filter = '';
+  });
+
+  // Scroll listener
+  window.addEventListener('scroll', () => {
+    scrollY = window.scrollY;
+    applyScrollBlur(scrollY);
+
+    // Reapply letter blur based on current mouse if in hero
+    if (scrollY < window.innerHeight) {
+      applyBlurFromMouse(mx);
+    }
+  });
+
+  // Initial state: all slightly blurry
+  letters.forEach((l, i) => {
+    const offsets = [16, 10, 4, 10, 16];
+    l.style.filter = `blur(${offsets[i]}px)`;
+    l.style.setProperty('--halftone-opacity', offsets[i] / 30);
+  });
+  heroSub.style.filter = 'blur(6px)';
+
+  // ─── Letter entrance animation ───────────────────────────────
+  setTimeout(() => {
+    letters.forEach((l, i) => {
+      setTimeout(() => {
+        l.style.transition = 'filter 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        l.style.filter = 'blur(0px)';
+        l.style.setProperty('--halftone-opacity', 0);
+      }, i * 80);
+    });
+    setTimeout(() => {
+      heroSub.style.filter = 'blur(0px)';
+      heroSub.style.opacity = '0.38';
+      // Then go back to hover-interactive state after load
+      setTimeout(() => {
+        letters.forEach((l, i) => {
+          const offsets = [14, 8, 2, 8, 14];
+          l.style.filter = `blur(${offsets[i]}px)`;
+        });
+        heroSub.style.filter = 'blur(4px)';
+        applyBlurFromMouse(mx);
+      }, 1200);
+    }, 500);
+  }, 400);
+
+  // ─── Scroll reveal ───────────────────────────────────────────
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.15 });
+  reveals.forEach(el => observer.observe(el));
+
+  // ─── Random jitter on hover (like pixlspace image 4 tilt) ───
+  letters.forEach(letter => {
+    letter.addEventListener('mouseenter', () => {
+      const tilt = (Math.random() - 0.5) * 14;
+      const scale = 0.97 + Math.random() * 0.06;
+      letter.style.transform = `rotate(${tilt}deg) scale(${scale})`;
+      setTimeout(() => { letter.style.transform = ''; }, 350);
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+# Secrets — NEVER commit
+.env
+*.env.local
+*.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+htmlcov/
+.coverage
+
+# ML artifacts
+backend/models/*.joblib
+faiss_index/*
+!faiss_index/.gitkeep
+backend/faiss_index/
+kb/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/build_output.txt
+frontend/tsc_errors.txt
+frontend/.vite/
+.next/
+
+# Docker volumes
+postgres_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Claude Code local settings
+.claude/
+
+
+# Documentation and artifacts — if you want these in the repo, remove these lines.
+SKILL.md
+LUMIO_PROJECT_CONTEXT.md
+.BUG_FIXES_REPORT.md
+DESIGN_SYSTEM_APPLIED.md
+LUMIO_DESIGN_INTEGRATION.md

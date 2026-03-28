@@ -15,7 +15,6 @@ export const ChatbotPage: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const fillInputRef = useRef<((text: string) => void) | null>(null)
 
-  // Suggested questions
   const suggestedQuestions = useMemo(
     () => [
       'What should I do for a distracted student?',
@@ -25,13 +24,10 @@ export const ChatbotPage: React.FC = () => {
     []
   )
 
-  // Fetch students for selected class
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const response = await apiClient.get<{ students: Student[] }>(
-          `/classes/${selectedClassId}/students`
-        )
+        const response = await apiClient.get<{ students: Student[] }>(`/classes/${selectedClassId}/students`)
         setStudents(response.data.students || [])
         setSelectedStudentId(undefined)
       } catch (error) {
@@ -39,84 +35,75 @@ export const ChatbotPage: React.FC = () => {
         setStudents([])
       }
     }
-
     fetchStudents()
   }, [selectedClassId])
 
-  // Get selected student info
   const selectedStudent = useMemo(
     () => students.find((s) => s.id === selectedStudentId),
     [students, selectedStudentId]
   )
 
-  // Get risk tier color
-  const getRiskTierColor = (tier?: string) => {
+  const getRiskBadge = (tier?: string) => {
     switch (tier) {
       case 'low':
-        return 'bg-green-900/30 border-green-600 text-green-300'
+        return { style: { background: '#f0fdf4', border: '1.5px solid #166534', color: '#166534' }, label: 'Low Risk' }
       case 'moderate':
-        return 'bg-amber-900/30 border-amber-600 text-amber-300'
+        return { style: { background: '#fffbeb', border: '1.5px solid #92400e', color: '#92400e' }, label: 'Moderate Risk' }
       case 'needs_attention':
-        return 'bg-red-900/30 border-red-600 text-red-300'
+        return { style: { background: '#fef2f2', border: '1.5px solid #991b1b', color: '#991b1b' }, label: 'Needs Attention' }
       default:
-        return 'bg-slate-700 border-slate-600 text-slate-300'
+        return { style: {}, label: '' }
     }
   }
 
-  // Fill input with suggestion
   const fillSuggestion = (suggestion: string) => {
-    if (fillInputRef.current) {
-      fillInputRef.current(suggestion)
-    }
+    if (fillInputRef.current) fillInputRef.current(suggestion)
   }
 
-  // Register the fill callback
   const handleSuggestFill = (callback: (text: string) => void) => {
     ;(fillInputRef as React.MutableRefObject<(text: string) => void | null>).current = callback
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 96px)' }}>
       {/* Header */}
-      <div className="border-b border-slate-700 bg-slate-800/50 backdrop-blur px-6 py-4">
-        <h1 className="text-3xl font-bold text-white mb-4">AI Teaching Assistant</h1>
+      <div className="pb-6 border-b border-border mb-6">
+        <h1 className="font-display font-bold text-ink mb-4" style={{ fontSize: 'clamp(28px, 4vw, 42px)' }}>
+          AI Teaching Assistant
+        </h1>
 
-        {/* Student context selector */}
         <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-slate-300">Student Context:</label>
+          <label className="form-label" style={{ marginBottom: 0 }}>Student Context</label>
           <select
             value={selectedStudentId || ''}
             onChange={(e) => setSelectedStudentId(e.target.value || undefined)}
-            className="px-3 py-1 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input-field"
+            style={{ width: 'auto' }}
           >
             <option value="">No student context</option>
             {students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.name}
-              </option>
+              <option key={student.id} value={student.id}>{student.name}</option>
             ))}
           </select>
 
-          {/* Student info card */}
-          {selectedStudent && (
-            <div
-              className={`px-3 py-2 rounded-lg border text-sm font-medium ${getRiskTierColor(selectedStudent.risk_tier)}`}
-            >
-              {selectedStudent.name} •{' '}
-              {selectedStudent.risk_tier === 'low'
-                ? 'Low Risk'
-                : selectedStudent.risk_tier === 'moderate'
-                  ? 'Moderate Risk'
-                  : 'Needs Attention'}
-            </div>
-          )}
+          {selectedStudent && (() => {
+            const risk = getRiskBadge(selectedStudent.risk_tier)
+            return (
+              <span
+                className="font-mono text-xs font-bold px-3 py-2 rounded-full"
+                style={{ ...risk.style, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}
+              >
+                {selectedStudent.name} — {risk.label}
+              </span>
+            )
+          })()}
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex gap-4 overflow-hidden p-4">
+      <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Chat interface */}
-        <div className="flex-1 flex flex-col min-w-0 bg-slate-800 rounded-xl overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 border border-border overflow-hidden">
           <ChatInterface
             endpoint="/rag/teacher"
             studentId={selectedStudentId}
@@ -124,18 +111,16 @@ export const ChatbotPage: React.FC = () => {
           />
         </div>
 
-        {/* Sidebar with suggestions */}
+        {/* Sidebar */}
         <div
-          className={`${
-            sidebarOpen ? 'w-64' : 'w-0'
-          } transition-all duration-300 overflow-hidden`}
+          className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 overflow-hidden`}
         >
-          <div className="bg-slate-800 rounded-xl p-4 h-full flex flex-col">
+          <div className="bg-surface border border-border p-5 h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-white">Suggestions</h2>
+              <span className="section-marker">Suggestions</span>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-muted hover:text-ink font-mono text-xs transition"
               >
                 ✕
               </button>
@@ -146,20 +131,19 @@ export const ChatbotPage: React.FC = () => {
                 <button
                   key={idx}
                   onClick={() => fillSuggestion(question)}
-                  className="w-full text-left px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-xs transition"
+                  className="w-full text-left px-4 py-3 border border-border bg-bg hover:border-ink text-ink font-mono text-xs transition"
                 >
-                  {question}
+                  ✦ {question}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Toggle sidebar button */}
         {!sidebarOpen && (
           <button
             onClick={() => setSidebarOpen(true)}
-            className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-slate-400 hover:text-white"
+            className="w-10 h-10 bg-surface border border-border flex items-center justify-center text-muted hover:text-ink transition"
           >
             ◀
           </button>
