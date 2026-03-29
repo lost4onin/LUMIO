@@ -38,6 +38,10 @@ class Settings(BaseSettings):
 
     # ── n8n ───────────────────────────────────────────────
     N8N_BASE_URL: str = Field(default="http://n8n:5678")
+    # Empty string = alerts disabled for that type
+    N8N_WEBHOOK_HIGH_RISK: str = Field(default="")
+    N8N_WEBHOOK_STRUGGLE: str = Field(default="")
+    N8N_WEBHOOK_WEEKLY: str = Field(default="")
 
     # ── CORS ──────────────────────────────────────────────
     CORS_ORIGINS: List[str] = Field(

@@ -223,24 +223,28 @@ async def seed():
             id=uuid4(),
             teacher_id=teacher.id,
             title="Maths — Algebra Chapter 3",
+            subject="Maths",
             description="Exercises 1 to 15 from the textbook.",
             due_date=now + timedelta(days=3),
             difficulty_level=2,
+            assigned_to=[str(yassine.id), str(mohamed.id), str(sarra.id)],
         )
         hw2 = Homework(
             id=uuid4(),
             teacher_id=teacher.id,
-            title="Sciences — Cell Biology Summary",
+            title="Reading — Cell Biology Summary",
+            subject="Sciences",
             description="Write a one-page summary of cell division.",
             due_date=now + timedelta(days=5),
             difficulty_level=1,
+            assigned_to=[str(yassine.id), str(mohamed.id), str(sarra.id)],
         )
         db.add_all([hw1, hw2])
         await db.flush()
         print("Created 2 homework assignments")
 
         # ── Yassine submission with struggle_flag=True ────────────────────────
-        submission = HomeworkSubmission(
+        submission_yassine = HomeworkSubmission(
             id=uuid4(),
             homework_id=hw1.id,
             student_id=yassine.id,
@@ -250,8 +254,19 @@ async def seed():
             struggle_flag=True,
             time_spent_sec=3600,
         )
-        db.add(submission)
-        print("Created 1 submission (struggle_flag=True, grade=4.0/20)")
+        # ── Mohamed normal submission ─────────────────────────────────────────
+        submission_mohamed = HomeworkSubmission(
+            id=uuid4(),
+            homework_id=hw2.id,
+            student_id=mohamed.id,
+            submitted_at=now - timedelta(hours=6),
+            grade=15.0,
+            teacher_feedback="Good summary — well structured.",
+            struggle_flag=False,
+            time_spent_sec=2700,
+        )
+        db.add_all([submission_yassine, submission_mohamed])
+        print("Created 2 submissions (Yassine: struggle_flag=True, Mohamed: normal)")
 
         # ── Risk profiles ─────────────────────────────────────────────────────
         profiles = [

@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from app.database import User, FocusEvent, HomeworkSubmission, ADHDRiskProfile
 from app.services.rule_engine import classify_archetype
 from app.services.rag_service import query_rag
+from app.services.alerts import fire_alert
 
 
 async def generate_recommendations(
@@ -122,6 +123,23 @@ async def generate_recommendations(
     db.add(profile)
     await db.commit()
     await db.refresh(profile)
+
+    # Fire high-risk alert — look up the linked parent (fire-and-forget)
+    if profile.risk_tier == "needs_attention":
+        parent_result = await db.execute(
+            select(User).where(
+                User.role == "parent",
+                User.linked_student_id == UUID(student_id),
+            )
+        )
+        parent = parent_result.scalar_one_or_none()
+        await fire_alert("high_risk", {
+            "student_name": student.full_name,
+            "student_id": student_id,
+            "risk_level": "high",
+            "risk_score": risk_score,
+            "parent_email": parent.email if parent else "",
+        })
 
     return {
         "student_id": student_id,

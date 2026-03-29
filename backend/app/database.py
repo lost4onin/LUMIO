@@ -145,10 +145,13 @@ class Homework(Base):
     class_id = Column(UUID(as_uuid=True), nullable=True)
     subject_id = Column(UUID(as_uuid=True), nullable=True)
     title = Column(String(255), nullable=False)
+    subject = Column(String(100), nullable=True)
     description = Column(Text, nullable=True)
     due_date = Column(DateTime(timezone=True), nullable=True)
     difficulty_level = Column(Integer, default=1)
     attachment_url = Column(String(500), nullable=True)
+    # JSON array of student UUID strings; null means assigned to the whole class
+    assigned_to = Column(JSON, nullable=True)
 
 
 # ── Table 5: homework_submissions ────────────────────────────────────────────
@@ -169,6 +172,7 @@ class HomeworkSubmission(Base):
     teacher_feedback = Column(Text, nullable=True)
     struggle_flag = Column(Boolean, default=False)
     time_spent_sec = Column(Integer, nullable=True)
+    analysis = Column(Text, nullable=True)
 
 
 # ── Table 6: adhd_risk_profiles ──────────────────────────────────────────────
