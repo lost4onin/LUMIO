@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 interface LoginFormData {
@@ -10,60 +10,65 @@ interface LoginFormData {
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
-  const { login, isLoading } = useAuth()
+  const [searchParams] = useSearchParams()
+  const { login } = useAuth()
+  
+  // Get role from URL params, default to student
+  const urlRole = (searchParams.get('role') || 'student') as 'student' | 'teacher' | 'parent'
+
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
-    role: 'student'
+    role: urlRole
   })
+  
   const [error, setError] = useState<string>('')
+  const [loadingState, setLoadingState] = useState<'idle' | 'loading'>('idle')
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, role: urlRole }))
+  }, [urlRole])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
-    // Clear error when user starts typing
     if (error) setError('')
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
+    setLoadingState('loading')
 
     try {
-      // Validate form fields
       if (!formData.email || !formData.password) {
         setError('Please fill in all fields')
+        setLoadingState('idle')
         return
       }
 
-      // Email validation regex
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email)) {
         setError('Please enter a valid email address')
+        setLoadingState('idle')
         return
       }
 
       await login(formData.email, formData.password, formData.role)
 
-      // After successful login, get the user from context and redirect based on role
-      // The login() call sets isLoading to false after success, so we check the response
-      // by using the user's role to determine the route
       const roleRoutes: Record<string, string> = {
         student: '/student/session',
         teacher: '/teacher/dashboard',
         parent: '/parent/overview'
       }
 
-      // Redirect to role-specific route
       navigate(roleRoutes[formData.role])
     } catch (err) {
-      // Handle specific error codes
       if (err instanceof Error) {
         const errorMessage = err.message
-
         if (errorMessage.includes('401')) {
           setError('Invalid email or password')
         } else if (errorMessage.includes('403')) {
@@ -82,36 +87,43 @@ const LoginPage: React.FC = () => {
       } else {
         setError('An unexpected error occurred. Please try again.')
       }
+      setLoadingState('idle')
     }
   }
 
+  const roleName = {
+    student: 'Student',
+    teacher: 'Teacher',
+    parent: 'Parent'
+  }[formData.role]
+
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-bg flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md">
-        {/* Lumio Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">
-            Lumio
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-xl font-display font-bold text-ink mb-2" style={{ fontSize: 'clamp(56px, 10vw, 140px)' }}>
+            LUMIO
           </h1>
-          <p className="text-slate-400 text-sm mt-2">ADHD Learning Support Platform</p>
+          <p className="text-sm text-muted font-mono" style={{ letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+            — Welcome back, {roleName.toLowerCase()}
+          </p>
         </div>
 
-        {/* Login Form Card */}
-        <div className="bg-slate-800 rounded-lg shadow-xl p-8 border border-slate-700">
-          <h2 className="text-2xl font-bold text-white mb-6">Sign In</h2>
-
+        {/* Form Card */}
+        <div className="bg-surface border border-border p-12 mb-8">
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-4 bg-red-900 border border-red-700 rounded-lg">
-              <p className="text-red-200 text-sm">{error}</p>
+            <div className="mb-8 p-4 bg-red-50 border-[1.5px] border-red-600">
+              <p className="text-red-600 text-sm font-mono">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-2">
-                Email Address
+              <label htmlFor="email" className="form-label">
+                Email
               </label>
               <input
                 type="email"
@@ -119,15 +131,15 @@ const LoginPage: React.FC = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                disabled={isLoading}
-                placeholder="you@example.com"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loadingState === 'loading'}
+                placeholder="name@example.com"
+                className="input-field"
               />
             </div>
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="password" className="form-label">
                 Password
               </label>
               <input
@@ -136,66 +148,37 @@ const LoginPage: React.FC = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                disabled={isLoading}
+                disabled={loadingState === 'loading'}
                 placeholder="••••••••"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="input-field"
               />
-            </div>
-
-            {/* Role Selector */}
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-slate-200 mb-2">
-                I am a...
-              </label>
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleInputChange}
-                disabled={isLoading}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed appearance-none cursor-pointer"
-              >
-                <option value="student">Student</option>
-                <option value="teacher">Teacher</option>
-                <option value="parent">Parent</option>
-              </select>
             </div>
 
             {/* Sign In Button */}
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-700 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105 disabled:scale-100 mt-6"
+              disabled={loadingState === 'loading'}
+              className="btn-accent w-full"
             >
-              {isLoading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Signing in...
-                </span>
-              ) : (
-                'Sign In'
-              )}
+              {loadingState === 'loading' ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
           {/* Register Link */}
-          <p className="text-center text-slate-400 text-sm mt-6">
-            Don't have an account?{' '}
+          <p className="text-center text-muted text-sm font-mono mt-8" style={{ letterSpacing: '0.02em' }}>
+            New here?{' '}
             <a
-              href="/register"
-              className="text-blue-400 hover:text-blue-300 font-medium transition"
+              href={`/register?role=${formData.role}`}
+              className="text-accent hover:underline font-bold transition-colors"
             >
-              Register
+              Create an account
             </a>
           </p>
         </div>
 
-        {/* Footer Info */}
-        <div className="mt-8 text-center text-slate-500 text-xs">
-          <p>© 2024 Lumio Platform. All rights reserved.</p>
+        {/* Footer */}
+        <div className="text-center text-muted text-xs font-mono" style={{ letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+          <p>© 2026 Lumio — by Unblur</p>
         </div>
       </div>
     </div>

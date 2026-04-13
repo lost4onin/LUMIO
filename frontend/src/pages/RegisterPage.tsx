@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 interface RegisterFormData {
@@ -19,45 +19,51 @@ interface FormErrors {
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { register, isLoading } = useAuth()
+
+  // Get role from URL params, default to student
+  const urlRole = (searchParams.get('role') || 'student') as 'student' | 'teacher' | 'parent'
+
   const [formData, setFormData] = useState<RegisterFormData>({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'student'
+    role: urlRole
   })
   const [errors, setErrors] = useState<FormErrors>({})
   const [generalError, setGeneralError] = useState<string>('')
+  const [loadingState, setLoadingState] = useState<'idle' | 'loading'>('idle')
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, role: urlRole }))
+  }, [urlRole])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
-    // Clear field error when user starts typing
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({
         ...prev,
         [name]: undefined
       }))
     }
-    // Clear general error
     if (generalError) setGeneralError('')
   }
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
 
-    // Validate name
     if (!formData.name.trim()) {
       newErrors.name = 'Full name is required'
     } else if (formData.name.trim().length < 2) {
       newErrors.name = 'Name must be at least 2 characters'
     }
 
-    // Validate email
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required'
     } else {
@@ -67,14 +73,12 @@ const RegisterPage: React.FC = () => {
       }
     }
 
-    // Validate password
     if (!formData.password) {
       newErrors.password = 'Password is required'
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters'
     }
 
-    // Validate confirm password
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password'
     } else if (formData.password !== formData.confirmPassword) {
@@ -88,19 +92,20 @@ const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setGeneralError('')
+    setLoadingState('loading')
 
     if (!validateForm()) {
+      setLoadingState('idle')
       return
     }
 
     try {
       await register(formData.name, formData.email, formData.password, formData.role)
 
-      // Redirect based on role
       const roleRoute: Record<string, string> = {
-        student: '/student',
-        teacher: '/teacher',
-        parent: '/parent'
+        student: '/student/session',
+        teacher: '/teacher/dashboard',
+        parent: '/parent/overview'
       }
 
       navigate(roleRoute[formData.role])
@@ -110,35 +115,41 @@ const RegisterPage: React.FC = () => {
       } else {
         setGeneralError('An unexpected error occurred. Please try again.')
       }
+      setLoadingState('idle')
     }
   }
 
-  return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+  const roleName = {
+    student: 'Student',
+    teacher: 'Teacher',
+    parent: 'Parent'
+  }[formData.role]
+
+  return (    <div className="min-h-screen bg-bg flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md">
-        {/* Lumio Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">
-            Lumio
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-xl font-display font-bold text-ink mb-2" style={{ fontSize: 'clamp(56px, 10vw, 140px)' }}>
+            LUMIO
           </h1>
-          <p className="text-slate-400 text-sm mt-2">ADHD Learning Support Platform</p>
+          <p className="text-sm text-muted font-mono" style={{ letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+            — Create Account
+          </p>
         </div>
 
-        {/* Register Form Card */}
-        <div className="bg-slate-800 rounded-lg shadow-xl p-8 border border-slate-700">
-          <h2 className="text-2xl font-bold text-white mb-6">Create Account</h2>
-
+        {/* Form Card */}
+        <div className="bg-surface border border-border p-12 mb-8">
           {/* General Error Message */}
           {generalError && (
-            <div className="mb-4 p-4 bg-red-900 border border-red-700 rounded-lg">
-              <p className="text-red-200 text-sm">{generalError}</p>
+            <div className="mb-8 p-4 bg-red-50 border-[1.5px] border-red-600">
+              <p className="text-red-600 text-sm font-mono">{generalError}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Full Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="name" className="form-label">
                 Full Name
               </label>
               <input
@@ -147,21 +158,21 @@ const RegisterPage: React.FC = () => {
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                disabled={isLoading}
+                disabled={loadingState === 'loading'}
                 placeholder="John Doe"
-                className={`w-full px-4 py-2 bg-slate-700 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-1 transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  errors.name
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'border-slate-600 focus:border-blue-500 focus:ring-blue-500'
+                className={`input-field ${
+                  errors.name ? 'border-red-600' : ''
                 }`}
               />
-              {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+              {errors.name && (
+                <p className="text-red-600 text-xs mt-2 font-mono">{errors.name}</p>
+              )}
             </div>
 
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-2">
-                Email Address
+              <label htmlFor="email" className="form-label">
+                Email
               </label>
               <input
                 type="email"
@@ -169,20 +180,20 @@ const RegisterPage: React.FC = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                disabled={isLoading}
-                placeholder="you@example.com"
-                className={`w-full px-4 py-2 bg-slate-700 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-1 transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  errors.email
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'border-slate-600 focus:border-blue-500 focus:ring-blue-500'
+                disabled={loadingState === 'loading'}
+                placeholder="name@example.com"
+                className={`input-field ${
+                  errors.email ? 'border-red-600' : ''
                 }`}
               />
-              {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+              {errors.email && (
+                <p className="text-red-600 text-xs mt-2 font-mono">{errors.email}</p>
+              )}
             </div>
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="password" className="form-label">
                 Password
               </label>
               <input
@@ -191,20 +202,20 @@ const RegisterPage: React.FC = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                disabled={isLoading}
+                disabled={loadingState === 'loading'}
                 placeholder="••••••••"
-                className={`w-full px-4 py-2 bg-slate-700 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-1 transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  errors.password
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'border-slate-600 focus:border-blue-500 focus:ring-blue-500'
+                className={`input-field ${
+                  errors.password ? 'border-red-600' : ''
                 }`}
               />
-              {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
+              {errors.password && (
+                <p className="text-red-600 text-xs mt-2 font-mono">{errors.password}</p>
+              )}
             </div>
 
             {/* Confirm Password Field */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="confirmPassword" className="form-label">
                 Confirm Password
               </label>
               <input
@@ -213,86 +224,42 @@ const RegisterPage: React.FC = () => {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
-                disabled={isLoading}
+                disabled={loadingState === 'loading'}
                 placeholder="••••••••"
-                className={`w-full px-4 py-2 bg-slate-700 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-1 transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  errors.confirmPassword
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'border-slate-600 focus:border-blue-500 focus:ring-blue-500'
+                className={`input-field ${
+                  errors.confirmPassword ? 'border-red-600' : ''
                 }`}
               />
               {errors.confirmPassword && (
-                <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>
+                <p className="text-red-600 text-xs mt-2 font-mono">{errors.confirmPassword}</p>
               )}
             </div>
 
-            {/* Role Selector */}
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-slate-200 mb-2">
-                I am a...
-              </label>
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleInputChange}
-                disabled={isLoading}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed appearance-none cursor-pointer"
-              >
-                <option value="student">Student</option>
-                <option value="teacher">Teacher</option>
-                <option value="parent">Parent</option>
-              </select>
-            </div>
-
-            {/* Register Button */}
+            {/* Create Account Button */}
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-700 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105 disabled:scale-100 mt-6"
+              disabled={loadingState === 'loading'}
+              className="btn-accent w-full"
             >
-              {isLoading ? (
-                <span className="flex items-center justify-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Creating account...
-                </span>
-              ) : (
-                'Create Account'
-              )}
+              {loadingState === 'loading' ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
 
           {/* Login Link */}
-          <p className="text-center text-slate-400 text-sm mt-6">
-            Already have an account?{' '}
-            <a href="/login" className="text-blue-400 hover:text-blue-300 font-medium transition">
+          <p className="text-center text-muted text-sm font-mono mt-8" style={{ letterSpacing: '0.02em' }}>
+            Already registered?{' '}
+            <a
+              href={`/login?role=${formData.role}`}
+              className="text-accent hover:underline font-bold transition-colors"
+            >
               Sign In
             </a>
           </p>
         </div>
 
-        {/* Footer Info */}
-        <div className="mt-8 text-center text-slate-500 text-xs">
-          <p>© 2024 Lumio Platform. All rights reserved.</p>
+        {/* Footer */}
+        <div className="text-center text-muted text-xs font-mono" style={{ letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+          <p>© 2026 Lumio — by Unblur</p>
         </div>
       </div>
     </div>

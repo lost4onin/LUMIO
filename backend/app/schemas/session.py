@@ -14,8 +14,14 @@ from datetime import datetime
 
 
 class SessionStart(BaseModel):
-    """Body for POST /sessions/start — both fields are optional."""
+    """Body for POST /sessions/start — all fields optional.
+
+    Accepts legacy {subject_id: UUID, cv_used: bool} and the frontend's
+    {student_id, subject: 'Math'} shape. Unknown subject strings are ignored.
+    """
     subject_id: Optional[UUID] = None
+    subject: Optional[str] = None
+    student_id: Optional[str] = None
     cv_used: bool = False
 
 
@@ -61,5 +67,5 @@ class FocusPayload(BaseModel):
     head_pose_deg: float          # degrees from neutral — can be negative (tilt left)
     focus_score: float = Field(..., ge=0.0, le=1.0)
     class_id: str                 # which class channel to publish to
-    session_id: str               # session identifier from the browser
+    session_id: Optional[str] = None  # optional — frontend may omit it
     ts: float                     # Unix timestamp (seconds) from the browser clock
