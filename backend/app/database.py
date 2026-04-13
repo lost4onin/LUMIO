@@ -164,6 +164,7 @@ class HomeworkSubmission(Base):
     homework_id = Column(UUID(as_uuid=True), ForeignKey("homework.id"), nullable=False)
     student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     file_url = Column(String(500), nullable=True)
+    submission_text = Column(Text, nullable=True)
     submitted_at = Column(DateTime(timezone=True), server_default=func.now())
     grade = Column(Float, nullable=True)
     teacher_feedback = Column(Text, nullable=True)

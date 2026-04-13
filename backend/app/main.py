@@ -1,29 +1,20 @@
 """
 main.py — FastAPI application entry point.
-This file wires everything together: middleware, routers, startup events.
+Wires middleware, routers, and startup events together.
 """
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.database import init_db
-from app.routers import auth, sessions, analytics, rag, homework
+from app.routers import auth, sessions, analytics, rag, homework, students, classes, parent
 from app.services.redis_service import init_redis, close_redis
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Lifespan context manager handles startup and shutdown.
-
-    Startup order matters:
-      1. init_db()    — create DB tables (idempotent: CREATE TABLE IF NOT EXISTS)
-      2. init_redis() — open the Redis connection pool
-
-    Shutdown:
-      close_redis() — drain in-flight Redis commands and close the TCP connection
-    """
     print("Lumio API starting up...")
     await init_db()
     await init_redis()
@@ -36,29 +27,31 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Lumio API",
     description="AI-powered ADHD early detection — IEEE CODE2CURE 2026",
-    version="0.1.0",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=True,   # Required for httpOnly cookie auth
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(auth.router,      prefix="/auth",      tags=["auth"])
-app.include_router(sessions.router,  prefix="/sessions",  tags=["sessions"])
-app.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
-app.include_router(rag.router,       prefix="/rag",       tags=["rag"])
-app.include_router(homework.router,  prefix="/homework",  tags=["homework"])
+app.include_router(auth.router,      prefix="/auth",      tags=["Auth"])
+app.include_router(sessions.router,  prefix="/sessions",  tags=["Sessions"])
+# WebSocket endpoints mounted at root so frontend can reach /ws/focus/{id}
+# and /ws/class/{id} directly (matches useFocusStream / useClassStream).
+app.include_router(sessions.ws_router)
+app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+app.include_router(rag.router,       prefix="/rag",       tags=["RAG"])
+app.include_router(homework.router,  prefix="/homework",  tags=["Homework"])
+app.include_router(students.router,  prefix="/students",  tags=["Students"])
+app.include_router(classes.router,   prefix="/classes",   tags=["Classes"])
+app.include_router(parent.router,    prefix="/parent",    tags=["Parent"])
 
 
-@app.get("/", tags=["health"])
+@app.get("/", tags=["Health"])
 async def health_check():
-    return {
-        "status": "ok",
-        "service": "Lumio API",
-        "version": "0.1.0",
-    }
+    return {"status": "ok", "service": "Lumio API", "version": "1.0.0"}
