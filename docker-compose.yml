@@ -11,6 +11,9 @@ services:
       - ./kb:/app/kb
     environment:
       - PYTHONUNBUFFERED=1
+      - N8N_WEBHOOK_HIGH_RISK=${N8N_WEBHOOK_HIGH_RISK:-}
+      - N8N_WEBHOOK_STRUGGLE=${N8N_WEBHOOK_STRUGGLE:-}
+      - N8N_WEBHOOK_WEEKLY=${N8N_WEBHOOK_WEEKLY:-}
 
     env_file:
       - .env
