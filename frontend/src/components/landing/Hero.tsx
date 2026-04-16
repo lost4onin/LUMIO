@@ -36,10 +36,10 @@ export function Hero() {
         className="fixed inset-0 z-30 pointer-events-none"
         style={{
           opacity: blurOpacity,
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          maskImage: `radial-gradient(circle 180px at ${mouse.x} ${mouse.y}, transparent 0%, rgba(0,0,0,0.08) 50%, black 100%)`,
-          WebkitMaskImage: `radial-gradient(circle 180px at ${mouse.x} ${mouse.y}, transparent 0%, rgba(0,0,0,0.08) 50%, black 100%)`,
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+          maskImage: `radial-gradient(circle 260px at ${mouse.x} ${mouse.y}, transparent 0%, rgba(0,0,0,0.05) 60%, black 100%)`,
+          WebkitMaskImage: `radial-gradient(circle 260px at ${mouse.x} ${mouse.y}, transparent 0%, rgba(0,0,0,0.05) 60%, black 100%)`,
         }}
       />
 
@@ -74,15 +74,31 @@ export function Hero() {
           <span className="text-gradient font-semibold">understood</span>
         </motion.p>
 
-        {/* by unblur — tight below tagline */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.0 }}
-          className="mt-4 text-xs text-muted-foreground/50 font-body tracking-widest uppercase"
+        {/* by unblur — premium byline */}
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.0, duration: 0.6, ease: "easeOut" }}
+          className="mt-6 flex items-center gap-2"
         >
-          by <span className="text-foreground/60 font-medium">unblur</span>
-        </motion.p>
+          <span className="h-px w-8 bg-gradient-to-r from-transparent via-muted-foreground/30 to-transparent" />
+          <p className="text-sm font-body tracking-[0.2em] uppercase text-muted-foreground/60">
+            by{" "}
+            <span
+              className="font-semibold tracking-widest"
+              style={{
+                background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--primary)))",
+                backgroundSize: "200% auto",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              unblur
+            </span>
+          </p>
+          <span className="h-px w-8 bg-gradient-to-r from-transparent via-muted-foreground/30 to-transparent" />
+        </motion.div>
       </div>
 
       {/* ===== BELOW THE FOLD: CTAs — first thing visible on scroll ===== */}
