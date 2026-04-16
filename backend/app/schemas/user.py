@@ -1,47 +1,34 @@
 """
 user.py — Pydantic v2 schemas for the users resource.
 
-Schemas are NOT the same as database models (SQLAlchemy).
-They define:
-  - What data the API *accepts* (request bodies) — UserCreate, UserLogin
-  - What data the API *returns* (response bodies) — UserResponse, Token
-
-Pydantic validates data automatically. If a request sends an invalid email
-or a password shorter than 6 chars, Pydantic raises a 422 error before
-your route function even runs.
+Key design: The DB stores full_name but the API surface uses name
+to match the frontend User interface. UserResponse.map_full_name
+handles the conversion transparently.
 """
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
 
 class UserCreate(BaseModel):
-    """
-    Accepted body for POST /auth/register.
-    Field(...) means the field is required — no default value.
-    min_length / max_length / pattern are validated automatically.
-    """
-    full_name: str = Field(..., min_length=2, max_length=255)
-    email: EmailStr                                    # validates format: user@domain.tld
+    # Frontend sends 'name', DB stores it as full_name — mapped in the router
+    name: str = Field(..., min_length=2, max_length=255)
+    email: EmailStr
     password: str = Field(..., min_length=6)
-    role: str = Field(..., pattern="^(student|teacher|parent)$")  # only these 3 values
+    role: str = Field(..., pattern="^(student|teacher|parent)$")
 
 
 class UserLogin(BaseModel):
-    """Accepted body for POST /auth/login."""
     email: EmailStr
     password: str
+    # Frontend sends role for UI validation; backend enforces it
+    role: Optional[str] = None
 
 
 class UserResponse(BaseModel):
-    """
-    Returned in API responses. Notice: no hashed_password field — never expose it.
-    model_config from_attributes=True tells Pydantic to read data from SQLAlchemy
-    ORM objects (which have attributes) rather than dicts.
-    """
     id: UUID
-    full_name: str
+    name: str
     email: str
     role: str
     language_pref: str
@@ -51,13 +38,35 @@ class UserResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @model_validator(mode="before")
+    @classmethod
+    def map_full_name(cls, v):
+        """Map ORM's full_name → API's name before Pydantic field validation."""
+        if isinstance(v, dict):
+            if "full_name" in v and "name" not in v:
+                v = dict(v)
+                v["name"] = v.pop("full_name")
+            return v
+        # ORM object — read attributes directly
+        return {
+            "id": v.id,
+            "name": v.full_name,
+            "email": v.email,
+            "role": v.role,
+            "language_pref": v.language_pref or "en",
+            "xp_points": v.xp_points or 0,
+            "streak_days": v.streak_days or 0,
+            "created_at": v.created_at,
+        }
+
+
+class UserWrapper(BaseModel):
+    """Response wrapper for GET /auth/me — frontend reads response.data.user"""
+    user: UserResponse
+
 
 class Token(BaseModel):
-    """
-    Returned after successful login/register.
-    access_token is also set in a httpOnly cookie — the body field is kept
-    for future use by native mobile clients that can't use cookies.
-    """
+    """Returned after successful login/register."""
     access_token: str
     token_type: str = "bearer"
     user: UserResponse

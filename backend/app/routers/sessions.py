@@ -36,21 +36,23 @@ from app.schemas.session import SessionStart, SessionEnd, SessionResponse, Focus
 
 router = APIRouter()
 
+# Root-level router for WebSocket endpoints. Mounted with prefix="" in main.py
+# so the frontend can connect to /ws/focus/{id} and /ws/class/{id} directly.
+ws_router = APIRouter()
+
 
 # ── POST /sessions/start ──────────────────────────────────────────────────────
-@router.post("/start", response_model=SessionResponse)
+@router.post("/start", status_code=201)
 async def start_session(
     body: SessionStart,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Create a new session row in the database and return its ID.
+    """Create a new session row and return {session_id, ...}.
 
-    Why role check?
-      Teachers and parents should not appear as session owners.
-      Returning 403 Forbidden (not 401) because the user IS authenticated —
-      they just don't have permission for this specific action.
+    Accepts either {subject_id: UUID, cv_used} or the frontend's
+    {student_id, subject: 'Math'} shape. Subject strings are not persisted
+    (no subjects table yet) — they're accepted for forward compatibility.
     """
     if current_user.role != "student":
         raise HTTPException(
@@ -65,10 +67,19 @@ async def start_session(
     )
     db.add(session)
     await db.commit()
-    # refresh() re-reads the row from DB so we get server-generated values
-    # (started_at uses server_default=func.now() — the DB sets it, not Python)
     await db.refresh(session)
-    return SessionResponse.model_validate(session)
+
+    return {
+        "session_id": str(session.id),
+        "id": str(session.id),
+        "student_id": str(session.student_id),
+        "started_at": session.started_at.isoformat() if session.started_at else None,
+        "ended_at": None,
+        "duration_sec": None,
+        "avg_focus_score": None,
+        "distraction_count": session.distraction_count or 0,
+        "cv_used": session.cv_used,
+    }
 
 
 # ── POST /sessions/end ────────────────────────────────────────────────────────
@@ -193,8 +204,8 @@ async def _flush_to_db(buffer: list) -> None:
             print(f"[focus] DB flush error: {exc}")
 
 
-# ── WS /sessions/ws/focus/{student_id} ───────────────────────────────────────
-@router.websocket("/ws/focus/{student_id}")
+# ── WS /ws/focus/{student_id} ────────────────────────────────────────────────
+@ws_router.websocket("/ws/focus/{student_id}")
 async def ws_focus(websocket: WebSocket, student_id: str):
     """
     Student's browser connects here and sends FocusPayload JSON every 1 second.
@@ -299,8 +310,8 @@ async def ws_focus(websocket: WebSocket, student_id: str):
             await _flush_to_db(buffer)
 
 
-# ── WS /sessions/ws/class/{class_id} ─────────────────────────────────────────
-@router.websocket("/ws/class/{class_id}")
+# ── WS /ws/class/{class_id} ──────────────────────────────────────────────────
+@ws_router.websocket("/ws/class/{class_id}")
 async def ws_class(websocket: WebSocket, class_id: str):
     """
     Teacher connects here to receive live focus updates for their class.
