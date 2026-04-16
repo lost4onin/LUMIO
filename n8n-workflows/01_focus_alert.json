@@ -1,0 +1,80 @@
+{
+  "name": "LUMIO — Focus Alert (Teacher)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "struggle_detected",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-struggle",
+      "name": "Webhook — Struggle Detected",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "check-focus",
+              "leftValue": "={{ $json.body.focus_score }}",
+              "rightValue": 0.4,
+              "operator": { "type": "number", "operation": "lt" }
+            }
+          ]
+        }
+      },
+      "id": "filter-focus",
+      "name": "Filter — Focus < 40%",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.teacher_email }}",
+        "subject": "⚠️ LUMIO — {{ $json.body.student_name }} needs your attention right now",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n  <title>LUMIO Focus Alert</title>\n</head>\n<body style=\"margin:0;padding:0;background:#f0f2f8;font-family:'Segoe UI',Arial,sans-serif;\">\n\n  <!-- Wrapper -->\n  <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f0f2f8;padding:40px 0;\">\n    <tr><td align=\"center\">\n\n      <!-- Card -->\n      <table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(60,70,120,0.10);\">\n\n        <!-- Header -->\n        <tr>\n          <td style=\"background:linear-gradient(135deg,#3d3a8c,#4a7abf);padding:32px 40px;text-align:center;\">\n            <img src=\"https://i.imgur.com/placeholder-logo.png\" alt=\"LUMIO\" height=\"36\" style=\"margin-bottom:12px;\" />\n            <h1 style=\"margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:0.5px;\">🧠 Live Focus Alert</h1>\n            <p style=\"margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px;\">Real-time classroom intelligence</p>\n          </td>\n        </tr>\n\n        <!-- Alert Banner -->\n        <tr>\n          <td style=\"background:#fff3cd;padding:16px 40px;border-left:4px solid #f0a500;\">\n            <p style=\"margin:0;color:#856404;font-size:14px;font-weight:600;\">\n              ⚡ Action needed — {{ $json.body.student_name }} has been struggling for {{ $json.body.distraction_duration_min }} minutes\n            </p>\n          </td>\n        </tr>\n\n        <!-- Body -->\n        <tr>\n          <td style=\"padding:36px 40px;\">\n\n            <p style=\"color:#4a5568;font-size:15px;line-height:1.6;margin-top:0;\">\n              Hello,<br/><br/>\n              LUMIO's AI detected that <strong>{{ $json.body.student_name }}</strong> in your class has been experiencing significant focus difficulties during today's session.\n            </p>\n\n            <!-- Stats Grid -->\n            <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:24px 0;\">\n              <tr>\n                <td style=\"padding:4px;\" width=\"33%\">\n                  <div style=\"background:#f7f8ff;border:1px solid #e2e5f0;border-radius:12px;padding:16px;text-align:center;\">\n                    <div style=\"font-size:28px;font-weight:800;color:#e53e3e;\">{{ $json.body.focus_score_pct }}%</div>\n                    <div style=\"font-size:11px;color:#718096;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;\">Focus Score</div>\n                  </div>\n                </td>\n                <td style=\"padding:4px;\" width=\"33%\">\n                  <div style=\"background:#f7f8ff;border:1px solid #e2e5f0;border-radius:12px;padding:16px;text-align:center;\">\n                    <div style=\"font-size:28px;font-weight:800;color:#d69e2e;\">{{ $json.body.distraction_duration_min }} min</div>\n                    <div style=\"font-size:11px;color:#718096;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;\">Since Struggling</div>\n                  </div>\n                </td>\n                <td style=\"padding:4px;\" width=\"33%\">\n                  <div style=\"background:#f7f8ff;border:1px solid #e2e5f0;border-radius:12px;padding:16px;text-align:center;\">\n                    <div style=\"font-size:28px;font-weight:800;color:#553c9a;\">{{ $json.body.session_duration_min }} min</div>\n                    <div style=\"font-size:11px;color:#718096;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;\">Session Length</div>\n                  </div>\n                </td>\n              </tr>\n            </table>\n\n            <!-- Cause -->\n            <div style=\"background:#ebf4ff;border-left:4px solid #4a7abf;border-radius:8px;padding:16px 20px;margin-bottom:24px;\">\n              <p style=\"margin:0;font-size:14px;color:#2b4c7e;\">\n                <strong>Detected Cause:</strong> {{ $json.body.distraction_cause }}<br/>\n                <strong>Current Subject:</strong> {{ $json.body.subject }}\n              </p>\n            </div>\n\n            <!-- AI Suggestions -->\n            <h3 style=\"color:#3d3a8c;font-size:16px;margin-bottom:12px;\">💡 AI Suggested Actions</h3>\n            <ul style=\"padding-left:20px;color:#4a5568;font-size:14px;line-height:2;\">\n              {{ $json.body.suggestions.map(s => '<li>' + s + '</li>').join('') }}\n            </ul>\n\n            <!-- CTA -->\n            <div style=\"text-align:center;margin:32px 0;\">\n              <a href=\"{{ $json.body.dashboard_url }}/teacher/students/{{ $json.body.student_id }}\"\n                 style=\"display:inline-block;background:linear-gradient(135deg,#3d3a8c,#4a7abf);color:#fff;text-decoration:none;padding:14px 32px;border-radius:12px;font-weight:700;font-size:15px;\">\n                View {{ $json.body.student_name }}'s Profile →\n              </a>\n            </div>\n\n          </td>\n        </tr>\n\n        <!-- Footer -->\n        <tr>\n          <td style=\"background:#f7f8ff;padding:20px 40px;text-align:center;border-top:1px solid #e2e5f0;\">\n            <p style=\"margin:0;color:#a0aec0;font-size:12px;\">LUMIO · AI-Powered Learning Support · <a href=\"{{ $json.body.dashboard_url }}\" style=\"color:#4a7abf;text-decoration:none;\">Open Dashboard</a></p>\n            <p style=\"margin:8px 0 0;color:#a0aec0;font-size:11px;\">This alert was generated automatically. Focus tracking is 100% browser-based — no video is ever transmitted.</p>\n          </td>\n        </tr>\n\n      </table>\n    </td></tr>\n  </table>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "send-teacher-email",
+      "name": "Gmail — Alert Teacher",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [700, 300],
+      "credentials": { "gmailOAuth2": { "id": "gmail-creds", "name": "Gmail OAuth2" } }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"status\": \"alert_sent\", \"workflow\": \"struggle_detected\" }"
+      },
+      "id": "respond-ok",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [940, 300]
+    }
+  ],
+  "connections": {
+    "Webhook — Struggle Detected": {
+      "main": [[{ "node": "Filter — Focus < 40%", "type": "main", "index": 0 }]]
+    },
+    "Filter — Focus < 40%": {
+      "main": [[{ "node": "Gmail — Alert Teacher", "type": "main", "index": 0 }]]
+    },
+    "Gmail — Alert Teacher": {
+      "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Triggered by FastAPI (alerts.py / N8N_WEBHOOK_STRUGGLE). Fires when a student's focus drops below 40% for 5+ consecutive minutes. Sends a rich HTML email to the teacher with the student's focus score, duration, AI-generated intervention suggestions, and a direct link to their profile."
+  }
+}

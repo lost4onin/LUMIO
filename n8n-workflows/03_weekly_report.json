@@ -1,0 +1,102 @@
+{
+  "name": "LUMIO — Weekly Progress Report (Parent)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 0"
+            }
+          ]
+        }
+      },
+      "id": "cron-weekly",
+      "name": "Cron — Every Sunday 8:00 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.LUMIO_API_URL }}/api/v1/reports/weekly-batch",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetch-weekly-data",
+      "name": "HTTP — Fetch Weekly Reports Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "credentials": { "httpHeaderAuth": { "id": "lumio-api-key", "name": "LUMIO API Key" } }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "students",
+        "options": {}
+      },
+      "id": "split-students",
+      "name": "Split — One Email Per Student",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "check-parent-email",
+              "leftValue": "={{ $json.parent_email }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ]
+        }
+      },
+      "id": "filter-has-parent",
+      "name": "Filter — Parent Email Exists",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.parent_email }}",
+        "subject": "📈 LUMIO Weekly Report — {{ $json.student_name }}'s learning this week",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n  <title>LUMIO Weekly Report</title>\n</head>\n<body style=\"margin:0;padding:0;background:#f0f2f8;font-family:'Segoe UI',Arial,sans-serif;\">\n\n  <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f0f2f8;padding:40px 0;\">\n    <tr><td align=\"center\">\n\n      <!-- Card -->\n      <table width=\"620\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(60,70,120,0.10);\">\n\n        <!-- Header -->\n        <tr>\n          <td style=\"background:linear-gradient(135deg,#3d3a8c,#4a7abf);padding:36px 44px;\">\n            <table width=\"100%\"><tr>\n              <td>\n                <h1 style=\"margin:0;color:#ffffff;font-size:24px;font-weight:700;\">📈 Weekly Learning Report</h1>\n                <p style=\"margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;\">{{ $json.week_label }} · {{ $json.student_name }}'s progress</p>\n              </td>\n              <td style=\"text-align:right;\">\n                <div style=\"background:rgba(255,255,255,0.15);display:inline-block;padding:10px 18px;border-radius:60px;\">\n                  <span style=\"color:#fff;font-size:13px;font-weight:600;\">LUMIO</span>\n                </div>\n              </td>\n            </tr></table>\n          </td>\n        </tr>\n\n        <!-- Greeting -->\n        <tr>\n          <td style=\"padding:32px 44px 0;\">\n            <p style=\"color:#4a5568;font-size:15px;line-height:1.7;margin:0;\">\n              Dear parent,<br/><br/>\n              Here is <strong>{{ $json.student_name }}</strong>'s weekly learning summary from LUMIO. This report covers all study sessions recorded between <strong>{{ $json.week_start }}</strong> and <strong>{{ $json.week_end }}</strong>.\n            </p>\n          </td>\n        </tr>\n\n        <!-- Weekly Headline Stats -->\n        <tr>\n          <td style=\"padding:28px 44px 0;\">\n            <h2 style=\"color:#3d3a8c;font-size:16px;margin:0 0 16px;\">🏆 This Week's Highlights</h2>\n            <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n              <tr>\n                <td style=\"padding:0 6px 0 0;\" width=\"25%\">\n                  <div style=\"background:#f7f8ff;border:1px solid #e2e5f0;border-radius:12px;padding:18px;text-align:center;\">\n                    <div style=\"font-size:30px;font-weight:800;color:#{{ $json.avg_focus >= 80 ? '38a169' : $json.avg_focus >= 60 ? 'd69e2e' : 'e53e3e' }};\">{{ $json.avg_focus }}%</div>\n                    <div style=\"font-size:11px;color:#718096;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px;\">Avg Focus</div>\n                  </div>\n                </td>\n                <td style=\"padding:0 6px;\" width=\"25%\">\n                  <div style=\"background:#f7f8ff;border:1px solid #e2e5f0;border-radius:12px;padding:18px;text-align:center;\">\n                    <div style=\"font-size:30px;font-weight:800;color:#553c9a;\">{{ $json.total_sessions }}</div>\n                    <div style=\"font-size:11px;color:#718096;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px;\">Sessions</div>\n                  </div>\n                </td>\n                <td style=\"padding:0 6px;\" width=\"25%\">\n                  <div style=\"background:#f7f8ff;border:1px solid #e2e5f0;border-radius:12px;padding:18px;text-align:center;\">\n                    <div style=\"font-size:30px;font-weight:800;color:#3182ce;\">{{ $json.total_study_hours }}h</div>\n                    <div style=\"font-size:11px;color:#718096;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px;\">Study Time</div>\n                  </div>\n                </td>\n                <td style=\"padding:0 0 0 6px;\" width=\"25%\">\n                  <div style=\"background:#f7f8ff;border:1px solid #e2e5f0;border-radius:12px;padding:18px;text-align:center;\">\n                    <div style=\"font-size:30px;font-weight:800;color:#38a169;\">{{ $json.hw_completion_pct }}%</div>\n                    <div style=\"font-size:11px;color:#718096;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px;\">HW Done</div>\n                  </div>\n                </td>\n              </tr>\n            </table>\n          </td>\n        </tr>\n\n        <!-- Focus vs. Last Week -->\n        <tr>\n          <td style=\"padding:28px 44px 0;\">\n            <div style=\"background:{{ $json.focus_trend == 'up' ? '#f0fff4' : $json.focus_trend == 'down' ? '#fff5f5' : '#f7f8ff' }};border:1px solid {{ $json.focus_trend == 'up' ? '#c6f6d5' : $json.focus_trend == 'down' ? '#fed7d7' : '#e2e5f0' }};border-radius:12px;padding:18px 22px;\">\n              <p style=\"margin:0;font-size:14px;color:#4a5568;\">\n                {{ $json.focus_trend == 'up' ? '📈' : $json.focus_trend == 'down' ? '📉' : '➡️' }}\n                <strong>Focus vs last week:</strong>\n                {{ $json.focus_trend == 'up' ? '▲ +' + $json.focus_change_pct + '% — Great improvement! Keep it up.' : $json.focus_trend == 'down' ? '▼ -' + $json.focus_change_pct + '% — Some extra support may help this week.' : 'Consistent performance — steady and reliable.' }}\n              </p>\n            </div>\n          </td>\n        </tr>\n\n        <!-- Homework Submissions -->\n        <tr>\n          <td style=\"padding:28px 44px 0;\">\n            <h2 style=\"color:#3d3a8c;font-size:16px;margin:0 0 14px;\">📚 Homework This Week</h2>\n            <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border:1px solid #e2e5f0;border-radius:12px;overflow:hidden;\">\n              <tr style=\"background:#f7f8ff;\">\n                <th style=\"text-align:left;padding:12px 16px;font-size:12px;color:#718096;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;\">Assignment</th>\n                <th style=\"text-align:left;padding:12px 16px;font-size:12px;color:#718096;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;\">Subject</th>\n                <th style=\"text-align:center;padding:12px 16px;font-size:12px;color:#718096;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;\">Status</th>\n                <th style=\"text-align:center;padding:12px 16px;font-size:12px;color:#718096;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;\">Grade</th>\n              </tr>\n              {{ $json.homework_rows }}\n            </table>\n            <p style=\"font-size:12px;color:#a0aec0;margin-top:8px;\">* Grades are on a 0–20 scale (Tunisian curriculum). Passing: 10/20</p>\n          </td>\n        </tr>\n\n        <!-- AI Parent Tip of the Week -->\n        <tr>\n          <td style=\"padding:28px 44px 0;\">\n            <h2 style=\"color:#3d3a8c;font-size:16px;margin:0 0 12px;\">💡 Your Personalised Tip This Week</h2>\n            <div style=\"background:#ebf4ff;border-left:4px solid #4a7abf;border-radius:8px;padding:18px 22px;\">\n              <p style=\"margin:0;color:#2b4c7e;font-size:14px;line-height:1.7;\">{{ $json.ai_parent_tip }}</p>\n            </div>\n          </td>\n        </tr>\n\n        <!-- Positive Note -->\n        <tr>\n          <td style=\"padding:28px 44px 0;\">\n            <div style=\"background:#f0fff4;border:1px solid #c6f6d5;border-radius:12px;padding:18px 22px;\">\n              <p style=\"margin:0;color:#276749;font-size:14px;font-weight:600;\">🌟 This week's highlight</p>\n              <p style=\"margin:8px 0 0;color:#276749;font-size:14px;line-height:1.7;\">{{ $json.positive_highlight }}</p>\n            </div>\n          </td>\n        </tr>\n\n        <!-- CTA -->\n        <tr>\n          <td style=\"padding:32px 44px;text-align:center;\">\n            <a href=\"{{ $json.dashboard_url }}/parent/dashboard\"\n               style=\"display:inline-block;background:linear-gradient(135deg,#3d3a8c,#4a7abf);color:#fff;text-decoration:none;padding:15px 36px;border-radius:12px;font-weight:700;font-size:15px;\">\n              View Full Dashboard →\n            </a>\n            <p style=\"margin:16px 0 0;font-size:13px;color:#a0aec0;\">Or reply to this email to contact {{ $json.student_name }}'s teacher directly</p>\n          </td>\n        </tr>\n\n        <!-- Footer -->\n        <tr>\n          <td style=\"background:#f7f8ff;padding:20px 44px;text-align:center;border-top:1px solid #e2e5f0;\">\n            <p style=\"margin:0;color:#a0aec0;font-size:12px;\">LUMIO · AI-Powered Learning Support · <a href=\"{{ $json.dashboard_url }}\" style=\"color:#4a7abf;text-decoration:none;\">Open Platform</a></p>\n            <p style=\"margin:8px 0 0;color:#a0aec0;font-size:11px;\">No camera footage is ever stored. All focus tracking is 100% on-device and private.</p>\n            <p style=\"margin:6px 0 0;color:#a0aec0;font-size:11px;\"><a href=\"{{ $json.unsubscribe_url }}\" style=\"color:#a0aec0;\">Unsubscribe from weekly reports</a></p>\n          </td>\n        </tr>\n\n      </table>\n    </td></tr>\n  </table>\n\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "send-weekly-report",
+      "name": "Gmail — Send Weekly Report",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1180, 300],
+      "credentials": { "gmailOAuth2": { "id": "gmail-creds", "name": "Gmail OAuth2" } }
+    }
+  ],
+  "connections": {
+    "Cron — Every Sunday 8:00 AM": {
+      "main": [[{ "node": "HTTP — Fetch Weekly Reports Batch", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Fetch Weekly Reports Batch": {
+      "main": [[{ "node": "Split — One Email Per Student", "type": "main", "index": 0 }]]
+    },
+    "Split — One Email Per Student": {
+      "main": [[{ "node": "Filter — Parent Email Exists", "type": "main", "index": 0 }]]
+    },
+    "Filter — Parent Email Exists": {
+      "main": [[{ "node": "Gmail — Send Weekly Report", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Runs automatically every Sunday at 8:00 AM with no FastAPI trigger needed. Calls the LUMIO backend /api/v1/reports/weekly-batch endpoint to get all active students whose parents have registered emails. Splits them into individual executions and sends each parent a rich personalised HTML email with: Avg Focus %, Sessions, Study Hours, HW Completion %, week-over-week trend, the week's homework table with grades, an AI-generated personalised parent tip, a positive highlight sentence, and a dashboard CTA."
+  }
+}

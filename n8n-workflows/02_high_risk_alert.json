@@ -1,0 +1,104 @@
+{
+  "name": "LUMIO — High Risk Alert (Parent)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "high_risk",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-high-risk",
+      "name": "Webhook — High Risk Detected",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "check-risk",
+              "leftValue": "={{ $json.body.risk_score }}",
+              "rightValue": 0.65,
+              "operator": { "type": "number", "operation": "gte" }
+            },
+            {
+              "id": "check-email",
+              "leftValue": "={{ $json.body.parent_email }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ]
+        }
+      },
+      "id": "filter-risk",
+      "name": "Filter — Risk ≥ 65% & Parent Has Email",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.parent_email }}",
+        "subject": "📊 LUMIO — An important update about {{ $json.body.student_name }}'s learning journey",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n  <title>LUMIO Parent Notice</title>\n</head>\n<body style=\"margin:0;padding:0;background:#f0f2f8;font-family:'Segoe UI',Arial,sans-serif;\">\n\n  <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f0f2f8;padding:40px 0;\">\n    <tr><td align=\"center\">\n\n      <!-- Card -->\n      <table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(60,70,120,0.10);\">\n\n        <!-- Header -->\n        <tr>\n          <td style=\"background:linear-gradient(135deg,#3d3a8c,#4a7abf);padding:32px 40px;text-align:center;\">\n            <h1 style=\"margin:0;color:#ffffff;font-size:22px;font-weight:700;\">LUMIO Learning Support</h1>\n            <p style=\"margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px;\">Keeping you informed, every step of the way</p>\n          </td>\n        </tr>\n\n        <!-- Notice banner -->\n        <tr>\n          <td style=\"background:#fff0f0;padding:16px 40px;border-left:4px solid #e53e3e;\">\n            <p style=\"margin:0;color:#c53030;font-size:14px;font-weight:600;\">\n              🔔 Our AI has identified a pattern that warrants your awareness — no cause for alarm, but worth a conversation\n            </p>\n          </td>\n        </tr>\n\n        <!-- Body -->\n        <tr>\n          <td style=\"padding:36px 40px;\">\n\n            <p style=\"color:#4a5568;font-size:15px;line-height:1.7;margin-top:0;\">\n              Dear parent,<br/><br/>\n              We're reaching out because LUMIO's AI has been tracking <strong>{{ $json.body.student_name }}</strong>'s focus patterns over the past several weeks and has identified a recurring pattern that may benefit from additional support.\n            </p>\n\n            <!-- Risk Summary -->\n            <div style=\"background:#fff5f5;border:1px solid #fed7d7;border-radius:12px;padding:24px;margin:24px 0;text-align:center;\">\n              <div style=\"font-size:42px;font-weight:800;color:#c53030;\">{{ $json.body.risk_score_pct }}%</div>\n              <div style=\"font-size:13px;color:#718096;margin-top:4px;\">Attention Support Score</div>\n              <div style=\"font-size:12px;color:#a0aec0;margin-top:8px;\">Based on {{ $json.body.streak_days }} day pattern</div>\n            </div>\n\n            <!-- What it means -->\n            <h3 style=\"color:#3d3a8c;font-size:16px;margin-bottom:12px;\">📌 What this means</h3>\n            <p style=\"color:#4a5568;font-size:14px;line-height:1.7;\">\n              LUMIO has observed that {{ $json.body.student_name }} shows <strong>{{ $json.body.archetype_label }}</strong> across multiple study sessions. This is a behavioural pattern that is common in students who may benefit from structured support strategies.\n            </p>\n\n            <!-- Important distinction -->\n            <div style=\"background:#ebf8ff;border-left:4px solid #4a7abf;border-radius:8px;padding:16px 20px;margin:20px 0;\">\n              <p style=\"margin:0;color:#2b6cb0;font-size:13px;line-height:1.6;\">\n                <strong>⚠️ Important:</strong> This is <em>not a medical diagnosis</em>. LUMIO uses educational pattern recognition to flag students who may benefit from additional support. A conversation with {{ $json.body.student_name }}'s teacher or a qualified educational specialist is recommended.\n              </p>\n            </div>\n\n            <!-- Suggested home actions -->\n            <h3 style=\"color:#3d3a8c;font-size:16px;margin-bottom:12px;\">🏠 Actions you can take at home tonight</h3>\n            <ul style=\"padding-left:20px;color:#4a5568;font-size:14px;line-height:2;\">\n              <li>Have a calm, positive conversation about how {{ $json.body.student_name }} feels during study time</li>\n              <li>Check if the study environment is quiet, well-lit and free of screen distractions</li>\n              <li>Encourage short breaks every 25 minutes using the LUMIO timer together</li>\n              <li>Reach out to {{ $json.body.student_name }}'s teacher — they have been notified and have AI-generated support strategies ready</li>\n              {{ $json.body.referral ? '<li><strong>Consider scheduling a consultation with an educational specialist</strong> — the teacher can provide a referral letter if needed</li>' : '' }}\n            </ul>\n\n            <!-- Teacher info -->\n            <div style=\"background:#f7f8ff;border:1px solid #e2e5f0;border-radius:12px;padding:20px;margin:24px 0;\">\n              <p style=\"margin:0 0 4px;font-size:14px;font-weight:600;color:#3d3a8c;\">{{ $json.body.student_name }}'s Teacher</p>\n              <p style=\"margin:0;font-size:14px;color:#4a5568;\">{{ $json.body.teacher_name }} · {{ $json.body.teacher_email }}</p>\n            </div>\n\n            <!-- CTA -->\n            <div style=\"text-align:center;margin:32px 0;\">\n              <a href=\"{{ $json.body.dashboard_url }}/parent/dashboard\"\n                 style=\"display:inline-block;background:linear-gradient(135deg,#3d3a8c,#4a7abf);color:#fff;text-decoration:none;padding:14px 32px;border-radius:12px;font-weight:700;font-size:15px;\">\n                View Full Report on LUMIO →\n              </a>\n            </div>\n\n          </td>\n        </tr>\n\n        <!-- Footer -->\n        <tr>\n          <td style=\"background:#f7f8ff;padding:20px 40px;text-align:center;border-top:1px solid #e2e5f0;\">\n            <p style=\"margin:0;color:#a0aec0;font-size:12px;\">LUMIO · Privacy-first learning support · No video data is ever stored or transmitted</p>\n            <p style=\"margin:8px 0 0;color:#a0aec0;font-size:11px;\">You are receiving this because you are a registered parent/guardian on the LUMIO platform.</p>\n          </td>\n        </tr>\n\n      </table>\n    </td></tr>\n  </table>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "send-parent-email",
+      "name": "Gmail — Alert Parent",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [700, 200],
+      "credentials": { "gmailOAuth2": { "id": "gmail-creds", "name": "Gmail OAuth2" } }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.teacher_email }}",
+        "subject": "🔴 LUMIO — {{ $json.body.student_name }} flagged as high-risk — professional referral recommended",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html><body style=\"font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f8;padding:40px;\">\n<div style=\"max-width:580px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(60,70,120,0.10);\">\n  <div style=\"background:linear-gradient(135deg,#3d3a8c,#4a7abf);padding:28px 36px;\">\n    <h2 style=\"color:#fff;margin:0;font-size:20px;\">🔴 High-Risk Student Alert</h2>\n    <p style=\"color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:13px;\">Action required — LUMIO Classroom Intelligence</p>\n  </div>\n  <div style=\"padding:32px 36px;\">\n    <p style=\"color:#4a5568;font-size:15px;line-height:1.7;\">\n      Hello,<br/><br/>\n      The LUMIO AI rule engine has flagged <strong>{{ $json.body.student_name }}</strong> as <strong style=\"color:#c53030;\">high-risk</strong> based on a persistent 14-day attention difficulty pattern.\n    </p>\n    <div style=\"background:#fff5f5;border:1px solid #fed7d7;border-radius:12px;padding:20px;margin:20px 0;\">\n      <div style=\"font-size:13px;color:#4a5568;line-height:1.8;\">\n        <div><strong>Risk Score:</strong> {{ $json.body.risk_score_pct }}% (threshold: 65%)</div>\n        <div><strong>Streak:</strong> {{ $json.body.streak_days }} consecutive flagged days</div>\n        <div><strong>Primary Cause:</strong> {{ $json.body.distraction_cause }}</div>\n        <div><strong>Archetype:</strong> {{ $json.body.archetype_label }}</div>\n        {{ $json.body.referral ? '<div style=\"margin-top:12px;padding:10px;background:#fff0f0;border-left:3px solid #e53e3e;border-radius:4px;\"><strong>⚠️ Professional Referral Recommended</strong></div>' : '' }}\n      </div>\n    </div>\n    <p style=\"color:#4a5568;font-size:14px;line-height:1.7;\">The parent has been notified via a separate, carefully worded email. Please follow up with them at your earliest convenience and consider involving the school's educational support team.</p>\n    <div style=\"text-align:center;margin:28px 0;\">\n      <a href=\"{{ $json.body.dashboard_url }}/teacher/students/{{ $json.body.student_id }}\" style=\"display:inline-block;background:linear-gradient(135deg,#3d3a8c,#4a7abf);color:#fff;text-decoration:none;padding:13px 28px;border-radius:12px;font-weight:700;font-size:14px;\">Open Student Profile →</a>\n    </div>\n  </div>\n  <div style=\"background:#f7f8ff;padding:16px 36px;text-align:center;border-top:1px solid #e2e5f0;\">\n    <p style=\"margin:0;color:#a0aec0;font-size:11px;\">LUMIO · Confidential — This alert is for educational and support purposes only</p>\n  </div>\n</div>\n</body></html>",
+        "options": {}
+      },
+      "id": "send-teacher-high-risk",
+      "name": "Gmail — Alert Teacher (High Risk Copy)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [700, 420],
+      "credentials": { "gmailOAuth2": { "id": "gmail-creds", "name": "Gmail OAuth2" } }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"status\": \"high_risk_alerts_sent\", \"workflow\": \"high_risk\" }"
+      },
+      "id": "respond-ok-risk",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook — High Risk Detected": {
+      "main": [[{ "node": "Filter — Risk ≥ 65% & Parent Has Email", "type": "main", "index": 0 }]]
+    },
+    "Filter — Risk ≥ 65% & Parent Has Email": {
+      "main": [[
+        { "node": "Gmail — Alert Parent", "type": "main", "index": 0 },
+        { "node": "Gmail — Alert Teacher (High Risk Copy)", "type": "main", "index": 0 }
+      ]]
+    },
+    "Gmail — Alert Teacher (High Risk Copy)": {
+      "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Triggered by FastAPI recommender.py when the rule engine classifies a student as PERSISTENT_ADHD_RISK (risk_score ≥ 0.65 + streak ≥ 7 days). Simultaneously sends: (1) a parent-friendly, non-alarmist email with home support tips, (2) a detailed technical alert to the teacher including the archetype, risk score, referral flag, and a direct link to the student's profile."
+  }
+}
