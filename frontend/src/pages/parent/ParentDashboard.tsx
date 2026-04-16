@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { ParentLayout } from "@/components/parent/ParentLayout";
 import { KpiCard } from "@/components/student/KpiCard";
-import { Target, Clock, CheckCircle2, Brain, TrendingUp, User } from "lucide-react";
+import { Target, Clock, CheckCircle2, TrendingUp, User } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine
@@ -19,12 +19,7 @@ const recentSessions = [
   { subject: "Biology", date: "Yesterday, 3:00 PM", duration: "20 min", focus: 64 },
 ];
 
-const parentTips = [
-  "Maintain a consistent evening routine to help Ahmed prepare for study sessions.",
-  "Limit screen time to 1 hour before bed — this has been shown to improve focus the next day.",
-  "Encourage 5-minute movement breaks between study sessions.",
-  "Praise effort and consistency over raw results — Ahmed's focus improved 12% this week.",
-];
+
 
 const ParentDashboard = () => {
   return (
@@ -101,30 +96,7 @@ const ParentDashboard = () => {
           </ResponsiveContainer>
         </motion.div>
 
-        {/* AI Parent Tips */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-card rounded-2xl p-6 border border-border/50 shadow-soft"
-        >
-          <h2 className="font-heading font-bold text-foreground mb-4 flex items-center gap-2">
-            <Brain size={16} className="text-primary" /> Home Support Tips
-          </h2>
-          <div className="space-y-3">
-            {parentTips.map((tip, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.25 + i * 0.05 }}
-                className="p-3 rounded-xl bg-primary/5 border border-primary/10 text-sm font-body leading-relaxed text-foreground"
-              >
-                {tip}
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+
       </div>
 
       {/* Recent Sessions */}

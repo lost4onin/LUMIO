@@ -105,10 +105,12 @@ const TeacherStudents = () => {
                     <div className="flex items-center gap-2">
                       <div className="w-16 h-1.5 rounded-full bg-muted/50 overflow-hidden">
                         <div className={`h-full rounded-full ${
-                          student.avgFocus >= 70 ? "bg-success" : student.avgFocus >= 50 ? "bg-warning" : "bg-destructive"
+                          student.avgFocus >= 80 ? "bg-success" : student.avgFocus >= 60 ? "bg-warning" : "bg-destructive"
                         }`} style={{ width: `${student.avgFocus}%` }} />
                       </div>
-                      <span className="text-sm font-heading font-bold text-foreground">{student.avgFocus}%</span>
+                      <span className={`text-sm font-heading font-bold ${
+                        student.avgFocus >= 80 ? "text-success" : student.avgFocus >= 60 ? "text-warning" : "text-destructive"
+                      }`}>{student.avgFocus}%</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm font-body text-muted-foreground">{student.sessions}</td>

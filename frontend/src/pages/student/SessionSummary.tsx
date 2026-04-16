@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { StudentLayout } from "@/components/student/StudentLayout";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { Zap, Clock, Target, Brain, TrendingUp, Home, CheckCircle2, Sparkles } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { Zap, Clock, Target, TrendingUp, Home, CheckCircle2 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine
 } from "recharts";
@@ -12,16 +12,17 @@ const timelineData = Array.from({ length: 30 }, (_, i) => ({
   focus: Math.max(30, Math.min(100, 75 + Math.sin(i * 0.5) * 15 + (Math.random() - 0.5) * 10)),
 }));
 
-const tips = [
-  "Great session! Your focus improved in the second half — try longer sessions to build on that momentum.",
-  "You showed strong focus during minutes 10–20. Consider scheduling harder topics during that window.",
-  "A short 5-minute break after 25 minutes can help maintain high focus throughout longer sessions.",
-];
+
 
 const SessionSummary = () => {
+  const location = useLocation();
+  const durationSeconds = location.state?.durationSeconds || 30 * 60;
+  const durationMins = Math.floor(durationSeconds / 60);
+  const durationSecs = durationSeconds % 60;
+
   const avgFocus = 82;
-  const duration = "30 min";
-  const xpEarned = 85;
+  const duration = durationSecs > 0 ? `${durationMins}m ${durationSecs}s` : `${durationMins} min`;
+  const xpEarned = Math.max(15, Math.floor(durationSeconds / 60) * 3 + Math.floor(avgFocus / 10));
 
   const getFocusMessage = (focus: number) => {
     if (focus >= 85) return { text: "Outstanding focus! You're in the zone 🔥", color: "text-success" };
@@ -115,35 +116,6 @@ const SessionSummary = () => {
           </ResponsiveContainer>
         </motion.div>
 
-        {/* AI Tips */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-card rounded-2xl p-6 border border-border/50 shadow-soft mb-8"
-        >
-          <h2 className="font-heading font-bold text-lg text-foreground mb-5 flex items-center gap-2">
-            <Sparkles size={18} className="text-primary" /> AI Insights
-          </h2>
-          <div className="space-y-4">
-            {tips.map((tip, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 + i * 0.1 }}
-                className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10"
-              >
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Brain size={13} className="text-primary" />
-                </div>
-                <p className="text-sm font-body leading-relaxed text-foreground">
-                  {tip}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
 
         {/* Actions */}
         <div className="flex justify-center gap-4">

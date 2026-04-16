@@ -2,7 +2,7 @@ import { TeacherLayout } from "@/components/teacher/TeacherLayout";
 import { KpiCard } from "@/components/student/KpiCard";
 import { RiskBadge } from "@/components/student/RiskBadge";
 import { motion } from "framer-motion";
-import { Brain, Clock, AlertTriangle, TrendingUp, ArrowLeft } from "lucide-react";
+import { Clock, AlertTriangle, TrendingUp, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useParams } from "react-router-dom";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
@@ -45,7 +45,7 @@ const StudentDetail = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard label="Avg Focus (30d)" value="48%" icon={Brain} change="+5%" borderColor="border-l-destructive" />
+          <KpiCard label="Avg Focus (30d)" value="48%" icon={TrendingUp} change="+5%" borderColor="border-l-destructive" />
           <KpiCard label="Sessions Attended" value="18/22" icon={Clock} change="82%" borderColor="border-l-primary" />
           <KpiCard label="Distraction Events" value="35" icon={AlertTriangle} change="-8" borderColor="border-l-warning" />
           <KpiCard label="Improvement" value="+5%" icon={TrendingUp} change="↑" borderColor="border-l-success" />
@@ -101,27 +101,7 @@ const StudentDetail = () => {
           </motion.div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-card rounded-2xl border border-primary/20 p-6 shadow-card"
-        >
-          <h3 className="font-heading font-bold text-base text-foreground mb-4">🤖 AI Recommendations</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { title: "Seat change", desc: "Consider moving Yassine closer to the front — proximity reduces phone distractions by ~30%." },
-              { title: "Shorter tasks", desc: "Break activities into 10-min blocks. Yassine's focus typically drops after 12 minutes." },
-              { title: "Positive reinforcement", desc: "Yassine responded well to verbal praise in sessions 15 & 18 — focus improved by 20%." },
-              { title: "Parent notification", desc: "Recommend sending a home support summary. Consistent evening routine may help." },
-            ].map((rec) => (
-              <div key={rec.title} className="p-4 rounded-xl bg-primary/5 border border-primary/10">
-                <p className="text-sm font-heading font-bold text-foreground mb-1">{rec.title}</p>
-                <p className="text-xs font-body text-muted-foreground leading-relaxed">{rec.desc}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+
       </div>
     </TeacherLayout>
   );

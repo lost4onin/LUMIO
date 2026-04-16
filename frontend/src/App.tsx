@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AnimatePresence, motion } from "framer-motion";
-import { LumioAIButton } from "@/components/LumioAIButton";
+
 import { AuthProvider, RequireAuth } from "@/contexts/AuthContext";
 
 // Public pages
@@ -95,8 +95,7 @@ const AppRoutes = () => {
         </Routes>
       </AnimatePresence>
 
-      {/* Floating AI Button — visible on all pages */}
-      <LumioAIButton />
+
     </>
   );
 };

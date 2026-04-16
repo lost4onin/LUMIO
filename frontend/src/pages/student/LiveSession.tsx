@@ -18,7 +18,7 @@ const LiveSession = () => {
     if (phase !== "active") return;
     if (remaining <= 0) {
       // Timer finished
-      navigate("/student/session/1/summary");
+      navigate("/student/session/1/summary", { state: { durationSeconds: totalMinutes * 60 } });
       return;
     }
     const interval = setInterval(() => setRemaining((r) => r - 1), 1000);
@@ -51,7 +51,7 @@ const LiveSession = () => {
 
   const handleEnd = () => {
     setPhase("setup");
-    navigate("/student/session/1/summary");
+    navigate("/student/session/1/summary", { state: { durationSeconds: totalMinutes * 60 - remaining } });
   };
 
   const adjustTime = (delta: number) => {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
 import { RiskBadge } from "@/components/student/RiskBadge";
 import { motion } from "framer-motion";
-import { Play, Pause, Users, Brain, AlertTriangle, Clock } from "lucide-react";
+import { Play, Pause, Users, Target, AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const students = [
@@ -70,7 +70,7 @@ const LiveClass = () => {
               <p className="text-xs text-muted-foreground font-body">Connected</p>
             </div>
             <div className="bg-card rounded-2xl border border-border/50 p-4 shadow-card text-center">
-              <Brain size={18} className="text-secondary mx-auto mb-2" />
+              <Target size={18} className="text-secondary mx-auto mb-2" />
               <p className="font-heading font-extrabold text-2xl text-foreground">{avgScore}%</p>
               <p className="text-xs text-muted-foreground font-body">Avg Focus</p>
             </div>
@@ -121,10 +121,14 @@ const LiveClass = () => {
                         initial={{ width: 0 }}
                         animate={{ width: `${student.score}%` }}
                         transition={{ duration: 0.8, delay: i * 0.03 }}
-                        className={`h-full rounded-full ${getBarColor(student.score)}`}
+                        className={`h-full rounded-full ${
+                          student.score >= 80 ? 'bg-success' : student.score >= 60 ? 'bg-warning' : 'bg-destructive'
+                        }`}
                       />
                     </div>
-                    <span className="text-xs font-heading font-bold text-foreground w-8 text-right">{student.score}%</span>
+                    <span className={`text-xs font-heading font-bold w-8 text-right ${
+                      student.score >= 80 ? 'text-success' : student.score >= 60 ? 'text-warning' : 'text-destructive'
+                    }`}>{student.score}%</span>
                   </div>
                 </motion.div>
               ))}

@@ -5,7 +5,7 @@ import { RiskBadge } from "@/components/student/RiskBadge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import {
-  Users, Brain, AlertTriangle, BookOpen, Play, TrendingUp, ArrowRight, Clock
+  Users, Target, AlertTriangle, BookOpen, Play, TrendingUp, ArrowRight, Clock
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -59,7 +59,7 @@ const TeacherDashboard = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <KpiCard icon={Users} label="Students" value="32" change="+2" borderColor="border-l-primary" />
-        <KpiCard icon={Brain} label="Avg Focus" value="71%" change="+3%" borderColor="border-l-secondary" />
+        <KpiCard icon={Target} label="Avg Focus" value="71%" change="+3%" borderColor="border-l-secondary" />
         <KpiCard icon={AlertTriangle} label="At-Risk" value="4" change="-1" borderColor="border-l-destructive" />
         <KpiCard icon={BookOpen} label="HW Pending" value="8" change="+3" borderColor="border-l-warning" />
       </div>
@@ -137,7 +137,7 @@ const TeacherDashboard = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-sm font-heading font-bold ${
-                      student.score < 50 ? "text-destructive" : "text-warning"
+                      student.score >= 80 ? "text-success" : student.score >= 60 ? "text-warning" : "text-destructive"
                     }`}>
                       {student.score}%
                     </span>

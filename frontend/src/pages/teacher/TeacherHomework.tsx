@@ -146,7 +146,7 @@ const TeacherHomework = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-card rounded-2xl p-8 shadow-elevated border border-border max-w-lg w-full mx-4"
+              className="dark bg-card text-foreground rounded-2xl p-8 shadow-elevated border border-border max-w-lg w-full mx-4"
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-heading font-bold text-lg text-foreground">New Assignment</h3>

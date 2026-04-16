@@ -12,7 +12,7 @@ interface KpiCardProps {
 export const KpiCard = ({ icon: Icon, label, value, change, borderColor = "border-l-primary" }: KpiCardProps) => {
   const isNegative = change.startsWith("-") || change.includes("↓");
   const ArrowIcon = isNegative ? TrendingDown : TrendingUp;
-  const changeColor = isNegative ? "text-destructive" : "text-success";
+  const changeColor = "text-success";
 
   return (
     <motion.div
@@ -28,7 +28,9 @@ export const KpiCard = ({ icon: Icon, label, value, change, borderColor = "borde
           <ArrowIcon size={12} /> {change}
         </span>
       </div>
-      <p className="font-heading font-extrabold text-2xl text-foreground">{value}</p>
+      <p className={`font-heading font-extrabold text-2xl ${
+        value.endsWith('%') ? (parseInt(value) >= 80 ? 'text-success' : parseInt(value) >= 60 ? 'text-warning' : 'text-destructive') : 'text-foreground'
+      }`}>{value}</p>
       <p className="text-xs text-muted-foreground font-body mt-0.5 uppercase tracking-wider">{label}</p>
     </motion.div>
   );
